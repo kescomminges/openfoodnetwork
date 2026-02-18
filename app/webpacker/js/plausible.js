@@ -1,0 +1,13 @@
+// Call Plausible on asynchronous page loads (Turbo SPA navigation)
+["turbo:load", "ujs:afterMorph"].forEach((listener) =>
+  document.addEventListener(listener, (event) => {
+    if (
+      typeof event?.detail?.timing === "object" &&
+      Object.keys(event?.detail?.timing).length === 0
+    ) {
+      return;
+    }
+
+    window.plausible?.("pageview");
+  }),
+);

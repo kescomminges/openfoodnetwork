@@ -110,6 +110,8 @@ Openfoodnetwork::Application.routes.draw do
 
     resource :matomo_settings, only: [:edit, :update]
 
+    resource :plausible_settings, only: [:edit, :update]
+
     resource :connected_app_settings, only: [:edit, :update]
 
     resources :stripe_accounts, only: [:destroy] do

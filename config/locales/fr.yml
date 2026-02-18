@@ -777,6 +777,15 @@ fr:
         info_html: "Matomo est un outil de suivi de traffic et de comportement des utilisateurs. Matomo est open source et validée par la CNIL française car non intrusif dans les données personnelles des utilisateurs. Pour plus d'infos : <a href='http://matomo.org' target='_blank'>matomo.org</a>."
         config_instructions_html: "Pour utiliser Matomo, vous devez configurer l'intégration avec CoopCircuits. L'URL de l'instance sur Matomo correspond à l'url du site internet visé par le suivi de la navigation utilisateur. Si le champ est vide, Matomo n'effectuera aucune analyse sur ce site. L'ID de l'instance sur Matomo n'est pas obligatoire, mais nécessaire si vous souhaitez analyser plusieurs sites web sur une seule instance Matomo. Cet ID peut être trouvé sur l'espace administrateur Matomo."
         config_instructions_tag_manager_html: "Ajouter l'URL du Tag Manager rend actif Matomo Tag Manager. Cet outil vous permet de suivre des évènements en particulier. Pour trouver l'URL rendez-vous sur l' \"Install Code section\" du Tag Manager. Attention à bien copier le bon contener et le bon environnement, car ils font varier l'URL."
+    plausible_settings:
+      edit:
+        title: "Plausible Analytics"
+        info_html: "Plausible est un outil d'analyse d'audience léger, open source et respectueux de la vie privée. Sans cookies, sans collecte de données personnelles. Pour plus d'infos : <a href='https://plausible.io' target='_blank'>plausible.io</a>."
+        config_instructions_html: "Renseignez le domaine suivi et l'URL du script fournis par votre instance Plausible. Le script ne sera injecté que si les deux champs sont remplis."
+        plausible_domain: "Domaine suivi"
+        plausible_domain_hint: "Ex : kescomminges.fr — doit correspondre au domaine configuré dans votre tableau de bord Plausible."
+        plausible_script_url: "URL du script Plausible"
+        plausible_script_url_hint: "Ex : https://plausible.s-entraider.net/js/script.file-downloads.hash.outbound-links.js"
     connected_app_settings:
       edit:
         title: "Paramètres de l'application connectée"

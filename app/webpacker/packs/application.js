@@ -3,6 +3,7 @@ import "../js/turbo";
 import "../js/hotkeys";
 import "../js/mrujs";
 import "../js/matomo";
+import "../js/plausible";
 import "../js/moment";
 
 require.context("../fonts", true);

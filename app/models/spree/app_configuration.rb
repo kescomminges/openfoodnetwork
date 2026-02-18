@@ -117,6 +117,10 @@ module Spree
     preference :matomo_site_id, :string, default: nil
     preference :matomo_tag_manager_url, :string, default: nil
 
+    # Plausible Analytics
+    preference :plausible_domain, :string, default: nil
+    preference :plausible_script_url, :string, default: nil
+
     # Invoices
     preference :enable_invoices?, :boolean, default: true
     preference :invoice_style2?, :boolean, default: false
