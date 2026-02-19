@@ -3,33 +3,61 @@
 # bin/deploy — Script de déploiement et mise à jour pour l'instance Kescomminges OFN
 #
 # Usage:
-#   bin/deploy update    — Fetch upstream, affiche les changements, demande
-#                          confirmation, rebase, puis déploie
-#   bin/deploy deploy    — Déploie le code courant (bundle, assets, migrations,
-#                          restart) sans toucher à git
-#   bin/deploy rollback  — Revient au commit sauvegardé avant le dernier deploy
-#   bin/deploy status    — Affiche l'état : commit, services, derniers deploys
-#   bin/deploy backup    — Lance uniquement une sauvegarde de la base de données
-#   bin/deploy help      — Affiche cette aide
+#   bin/deploy update              — Mise à jour + deploy (instance prod)
+#   bin/deploy update --env dev    — Mise à jour + deploy (instance dev)
+#   bin/deploy deploy              — Déploie le code courant sans toucher à git
+#   bin/deploy deploy --env dev    — Idem sur l'instance dev
+#   bin/deploy rollback            — Revient au commit avant le dernier deploy
+#   bin/deploy rollback --env dev  — Idem sur l'instance dev
+#   bin/deploy status              — État : commit, services, derniers deploys
+#   bin/deploy status --env dev    — Idem sur l'instance dev
+#   bin/deploy backup              — Sauvegarde de la base de données
+#   bin/deploy backup --env dev    — Idem sur la BDD dev
+#   bin/deploy help                — Affiche cette aide
 #
 # Prérequis :
 #   - rbenv installé dans $HOME de l'user qui lance le script
 #   - nvm installé dans $HOME de l'user qui lance le script (NVM_DIR=$HOME/.nvm)
 #   - sudo configuré pour systemctl restart/reload sur les services Puma/Sidekiq
 #     Exemple /etc/sudoers.d/deploy-ofn :
-#       deploy ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn
-#       deploy ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn
-#       deploy ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn-dev
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn-dev
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn-dev
 #
 # =============================================================================
 
 set -euo pipefail
 
 # =============================================================================
+# ── PARSING DE L'OPTION --env ─────────────────────────────────────────────────
+# =============================================================================
+
+DEPLOY_ENV="prod"
+FILTERED_ARGS=()
+for arg in "$@"; do
+  if [ "$arg" = "--env" ]; then
+    : # le prochain argument sera capturé
+  elif [ "${_PREV_ARG:-}" = "--env" ]; then
+    DEPLOY_ENV="$arg"
+  else
+    FILTERED_ARGS+=("$arg")
+  fi
+  _PREV_ARG="$arg"
+done
+set -- "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+
+# =============================================================================
 # ── CONFIGURATION — À ADAPTER À VOTRE ENVIRONNEMENT ──────────────────────────
 # =============================================================================
 
-APP_DIR="/home/kescomminges/ofn/openfoodnetwork"
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  APP_DIR="/home/kescomminges/ofn/openfoodnetwork-dev"
+else
+  APP_DIR="/home/kescomminges/ofn/openfoodnetwork"
+fi
 
 # Remotes git
 UPSTREAM_REMOTE="upstream"
@@ -39,31 +67,56 @@ ORIGIN_REMOTE="origin"
 # Stratégie de mise à jour : "tag" (dernier tag stable) ou "branch" (master)
 UPDATE_STRATEGY="tag"
 
-# Services systemd — ajuster selon votre installation
-# Vérifiez avec : systemctl list-units | grep -E 'puma|sidekiq'
-PUMA_SERVICE="puma-ofn"
-SIDEKIQ_SERVICE="sidekiq-ofn"
+# Services systemd — noms différents selon prod/dev
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  PUMA_SERVICE="puma-ofn-dev"
+  SIDEKIQ_SERVICE="sidekiq-ofn-dev"
+else
+  PUMA_SERVICE="puma-ofn"
+  SIDEKIQ_SERVICE="sidekiq-ofn"
+fi
 
 # Base de données (PostgreSQL)
-# DB_NAME peut être surchargée via la variable d'environnement DATABASE_URL
-# ou renseignée ici directement
+# Les variables OFN_DB_* sont lues depuis le .env chargé par le service,
+# mais on en a besoin ici pour pg_isready et pg_dump — on lit le bon .env
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  _ENV_FILE="$APP_DIR/.env.dev"
+else
+  _ENV_FILE="$APP_DIR/.env"
+fi
+# Charger les variables DB depuis le fichier .env correspondant
+if [ -f "$_ENV_FILE" ] && ! file "$_ENV_FILE" | grep -q "data"; then
+  # Fichier lisible (git-crypt déverrouillé)
+  set -a
+  # shellcheck source=/dev/null
+  source "$_ENV_FILE" 2>/dev/null || true
+  set +a
+fi
 DB_NAME="${OFN_DB_NAME:-open_food_network_prod}"
 DB_USER="${OFN_DB_USERNAME:-ofn}"
 DB_HOST="${OFN_DB_HOST:-localhost}"
 DB_PORT="${OFN_DB_PORT:-5432}"
 
-# Répertoire de sauvegarde (accessible depuis l'user courant)
-BACKUP_DIR="$HOME/backups/ofn"
+# Répertoire de sauvegarde
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  BACKUP_DIR="$HOME/backups/ofn-dev"
+else
+  BACKUP_DIR="$HOME/backups/ofn"
+fi
 BACKUP_KEEP=7  # Nombre de backups à conserver
 
-# Fichier de rollback (stocke commit + métadonnées du dernier deploy)
-ROLLBACK_FILE="/tmp/ofn_deploy_rollback"
+# Fichier de rollback (séparé par env pour éviter les collisions)
+ROLLBACK_FILE="/tmp/ofn_deploy_rollback_${DEPLOY_ENV}"
 
 # Log des déploiements
-LOG_FILE="$HOME/deploys.log"
+LOG_FILE="$HOME/deploys-${DEPLOY_ENV}.log"
 
 # Health check
-HEALTH_CHECK_URL="http://localhost:3000"
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  HEALTH_CHECK_URL="http://localhost:3001"
+else
+  HEALTH_CHECK_URL="http://localhost:3000"
+fi
 HEALTH_CHECK_RETRIES=12
 HEALTH_CHECK_WAIT=15  # secondes entre chaque tentative
 
@@ -130,6 +183,13 @@ elapsed() {
 # =============================================================================
 
 init_env() {
+  # Afficher l'environnement cible
+  if [ "$DEPLOY_ENV" = "dev" ]; then
+    echo -e "\n${YELLOW}${BOLD}⚙  Environnement : DEV (dev.kescomminges.fr — port 3001)${NC}"
+  else
+    echo -e "\n${BOLD}⚙  Environnement : PROD (kescomminges.fr — port 3000)${NC}"
+  fi
+
   # Charger rbenv (nécessaire dans les shells non-interactifs)
   if [ -d "$HOME/.rbenv" ]; then
     export PATH="$HOME/.rbenv/bin:$PATH"
@@ -976,16 +1036,19 @@ cmd_help() {
 ${BOLD}bin/deploy${NC} — Script de déploiement Kescomminges OFN
 
 ${BOLD}USAGE${NC}
-  bin/deploy <commande>
+  bin/deploy <commande> [--env dev]
+
+${BOLD}OPTION${NC}
+  --env dev   Cible l'instance dev (dev.kescomminges.fr, port 3001,
+              répertoire openfoodnetwork-dev, BDD open_food_network_dev).
+              Sans cette option, cible la prod (défaut).
 
 ${BOLD}COMMANDES${NC}
-  update    Récupère le dernier tag stable depuis upstream (stratégie par
-            défaut : UPDATE_STRATEGY=tag), affiche les changements, demande
-            confirmation, effectue le rebase, puis déploie.
-            Mettre UPDATE_STRATEGY=branch pour suivre master à la place.
+  update    Récupère le dernier tag stable depuis upstream, affiche les
+            changements, demande confirmation, effectue le rebase, déploie.
+            Workflow recommandé : tester sur --env dev avant la prod.
 
   deploy    Déploie le code courant sans toucher à git.
-            Utile après un rebase manuel ou pour redéployer après un fix.
             Enchaîne : Ruby/Node check → bundle → yarn → migrations → assets → restart
 
   rollback  Revient au commit sauvegardé avant le dernier déploiement.
@@ -1000,23 +1063,28 @@ ${BOLD}COMMANDES${NC}
 
   help      Affiche cette aide.
 
-${BOLD}CONFIGURATION${NC}
-  Éditez les variables en tête du script :
+${BOLD}CONFIGURATION ACTIVE${NC} (env: $DEPLOY_ENV)
     APP_DIR         : $APP_DIR
-    PUMA_SERVICE    : $PUMA_SERVICE   (systemctl restart ...)
+    PUMA_SERVICE    : $PUMA_SERVICE
     SIDEKIQ_SERVICE : $SIDEKIQ_SERVICE
     BACKUP_DIR      : $BACKUP_DIR
     DB_NAME         : $DB_NAME
+    HEALTH_CHECK    : $HEALTH_CHECK_URL
 
 ${BOLD}SUDO REQUIS${NC}
   Ajoutez dans /etc/sudoers.d/deploy-ofn :
-    <user> ALL=(root) NOPASSWD: /bin/systemctl restart $PUMA_SERVICE
-    <user> ALL=(root) NOPASSWD: /bin/systemctl reload $PUMA_SERVICE
-    <user> ALL=(root) NOPASSWD: /bin/systemctl restart $SIDEKIQ_SERVICE
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn-dev
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn-dev
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn-dev
 
 ${BOLD}EXEMPLES${NC}
-  bin/deploy status           # Vérifier l'état avant toute action
-  bin/deploy update           # Mise à jour complète depuis upstream
+  bin/deploy status                # État prod
+  bin/deploy status --env dev      # État dev
+  bin/deploy update --env dev      # Mettre à jour le site de dev en premier
+  bin/deploy update                # Mettre à jour la prod après validation dev
   bin/deploy backup           # Sauvegarde manuelle avant une opération risquée
   bin/deploy deploy           # Redéployer après un fix manuel
   bin/deploy rollback         # En cas de problème après un deploy

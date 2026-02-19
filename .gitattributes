@@ -13,5 +13,6 @@ webpack-dev-server eol=lf
 # Initialiser avec : git-crypt init && git-crypt export-key ~/kescomminges-ofn-secrets.key
 # Déverrouiller avec : git-crypt unlock ~/kescomminges-ofn-secrets.key
 .env filter=git-crypt diff=git-crypt
+.env.dev filter=git-crypt diff=git-crypt
 config/master.key filter=git-crypt diff=git-crypt
 config/newrelic.yml filter=git-crypt diff=git-crypt
