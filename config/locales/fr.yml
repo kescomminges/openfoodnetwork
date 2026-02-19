@@ -306,7 +306,7 @@ fr:
         signed_up_but_unconfirmed: "Un message avec un lien de confirmation a été envoyé à l'adresse email indiquée. Veuillez cliquer sur ce lien pour activer votre compte."
         unknown_error: "Une erreur s'est glissée lors de la création de votre compte. Vérifiez votre addresse email et recommencez."
     failure:
-      disabled: "Votre compte a été désactivé. Veuillez contacter contact@kescomminges.fr"
+      disabled: "Votre compte a été désactivé. Veuillez nous contacter via <a href='/contact'>notre formulaire de contact</a>."
       invalid: |
           Email / mot de passe incorrect.
           Créez votre compte ou réinitialisez votre mot de passe.
@@ -2492,7 +2492,7 @@ fr:
       Après avoir confirmé votre mail, vous pourrez accéder à votre compte administrateur
       pour l'entreprise concernée. Regardez %{link} pour en savoir plus sur les fonctionnalités
       de %{sitename}  et pour commencer à utiliser votre profil ou boutique en ligne."
-  email_confirmation_notice_unexpected: "Vous recevez ce message car vous vous êtes inscrit sur %{sitename}, ou avez été invité à vous inscrire par l'un de vos contacts. Si vous ne comprenez pas pourquoi vous recevez ce message, écrivez à contact@kescomminges.fr."
+  email_confirmation_notice_unexpected: "Vous recevez ce message car vous vous êtes inscrit sur %{sitename}, ou avez été invité à vous inscrire par l'un de vos contacts. Si vous ne comprenez pas pourquoi vous recevez ce message, contactez-nous via kescomminges.fr/contact."
   email_social: "Nous suivre:"
   email_contact: "Nous écrire:"
   email_signoff: "Cordialement,"
@@ -2547,8 +2547,8 @@ fr:
   email_signup_welcome: "Bienvenue sur %{sitename} !"
   email_signup_confirmed_email: "Merci d'avoir confirmé votre email."
   email_signup_shop_html: "Vous pouvez maintenant vous connecter sur %{link}."
-  email_signup_text: "Si vous organisez / fournissez un circuit court, n’hésitez pas à nous contacter à contact@kescomminges.fr, nous sommes là pour vous accompagner dans la création de votre espace de vente / commande en ligne. Si vous achetez via un circuit court utilisant Kescomminges, connectez-vous avant de passer commande pour que vos informations personnelles soient gardées en mémoire, cela vous évitera de les ressaisir à chaque commande ! "
-  email_signup_help_html: "Des retours à nous faire quant à votre utilisation de la plateforme ? Écrivez-nous à contact@kescomminges.fr."
+  email_signup_text: "Si vous organisez / fournissez un circuit court, n’hésitez pas à nous contacter à kescomminges.fr/contact, nous sommes là pour vous accompagner dans la création de votre espace de vente / commande en ligne. Si vous achetez via un circuit court utilisant Kescomminges, connectez-vous avant de passer commande pour que vos informations personnelles soient gardées en mémoire, cela vous évitera de les ressaisir à chaque commande ! "
+  email_signup_help_html: "Des retours à nous faire quant à votre utilisation de la plateforme ? <a href='https://kescomminges.fr/contact'>Contactez-nous via notre formulaire</a>."
   invite_email:
     greeting: "Bonjour,"
     invited_to_manage: "Vous avez été invité(e) à gérer %{enterprise} sur %{instance}."
@@ -5075,3 +5075,25 @@ fr:
   invisible_captcha:
     sentence_for_humans: "Merci de laisser ce champ libre"
     timestamp_error_message: "S'il vous plaît réessayez après 5 secondes."
+
+  contact_page:
+    title: "Nous contacter"
+    intro: "Une question, une suggestion, un problème ? Remplissez ce formulaire et nous vous répondrons dans les meilleurs délais."
+    success: "Votre message a bien été envoyé. Nous vous répondrons dans les meilleurs délais."
+    legal_notice: "Les informations saisies sont utilisées uniquement pour vous répondre, conformément à notre politique de confidentialité."
+    errors:
+      blank_fields: "Merci de renseigner au moins votre nom, votre email et votre message."
+      invalid_email: "L'adresse email saisie n'est pas valide."
+    form:
+      name: "Nom"
+      name_placeholder: "Votre nom et prénom"
+      email: "Email"
+      email_placeholder: "votre@email.fr"
+      subject: "Sujet"
+      subject_placeholder: "De quoi souhaitez-vous nous parler ?"
+      message: "Message"
+      message_placeholder: "Votre message..."
+      send: "Envoyer"
+      required: "Champ obligatoire"
+    mailer:
+      default_subject: "Message via le formulaire de contact"

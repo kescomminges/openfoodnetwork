@@ -13,7 +13,7 @@
 **RCS :** [VILLE D'IMMATRICULATION]
 **Siège social :** [ADRESSE COMPLÈTE]
 **Téléphone :** [NUMÉRO DE TÉLÉPHONE]
-**E-mail :** contact@kescomminges.fr
+**Contact :** [Formulaire de contact](https://kescomminges.fr/contact)
 
 **Directeur de la publication :** [NOM DU RESPONSABLE]
 
@@ -54,9 +54,9 @@ Les contenus publiés par les producteurs (photos, descriptions de produits) res
 Le traitement des données personnelles collectées via la Plateforme est effectué par :
 
 **Responsable du traitement :** [RAISON SOCIALE], représentée par [NOM DU RESPONSABLE]
-**Contact :** contact@kescomminges.fr
+**Contact :** [Formulaire de contact](https://kescomminges.fr/contact)
 
-Les Utilisateurs disposent d'un droit d'accès, de rectification, d'effacement, de portabilité et d'opposition à l'adresse ci-dessus, conformément au Règlement Général sur la Protection des Données (RGPD — UE 2016/679).
+Les Utilisateurs disposent d'un droit d'accès, de rectification, d'effacement, de portabilité et d'opposition via le formulaire ci-dessus, conformément au Règlement Général sur la Protection des Données (RGPD — UE 2016/679).
 
 En cas de réclamation non résolue, les Utilisateurs peuvent saisir la **Commission Nationale de l'Informatique et des Libertés (CNIL)** :
 - En ligne : [www.cnil.fr](https://www.cnil.fr)

@@ -18,6 +18,10 @@ Openfoodnetwork::Application.routes.draw do
   get "/conditions-utilisation", to: "legal#cgu",               as: :legal_cgu
   get "/mentions-legales",       to: "legal#mentions_legales",   as: :legal_mentions_legales
 
+  # Formulaire de contact
+  get  "/contact", to: "contact#show",   as: :contact
+  post "/contact", to: "contact#submit", as: :contact_submit
+
   get "/register", to: "registration#index", as: :registration
   get "/register/auth", to: "registration#authenticate", as: :registration_auth
   resources :locales, only: [:show]

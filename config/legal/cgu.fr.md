@@ -39,7 +39,7 @@ L'accès à certaines fonctionnalités (commande, gestion de boutique) nécessit
 
 ### 3.2 Responsabilité du compte
 
-L'Utilisateur est seul responsable de la confidentialité de ses identifiants. Toute utilisation du compte est réputée effectuée par le titulaire. En cas de compromission, l'Utilisateur doit en informer immédiatement l'Opérateur à l'adresse **contact@kescomminges.fr**.
+L'Utilisateur est seul responsable de la confidentialité de ses identifiants. Toute utilisation du compte est réputée effectuée par le titulaire. En cas de compromission, l'Utilisateur doit en informer immédiatement l'Opérateur via [notre formulaire de contact](https://kescomminges.fr/contact).
 
 ### 3.3 Résiliation
 
@@ -107,7 +107,7 @@ L'Acheteur bénéficie des garanties légales suivantes :
 - **Garantie de conformité** (articles L217-4 et suivants du Code de la consommation) : 2 ans à compter de la délivrance du bien.
 - **Garantie contre les vices cachés** (articles 1641 et suivants du Code civil).
 
-Pour exercer ces garanties, l'Acheteur contacte l'Opérateur à **contact@kescomminges.fr**.
+Pour exercer ces garanties, l'Acheteur contacte l'Opérateur via [notre formulaire de contact](https://kescomminges.fr/contact).
 
 ---
 
@@ -167,7 +167,7 @@ L'Opérateur collecte et traite les données personnelles des Utilisateurs confo
 
 ### 9.4 Droits des Utilisateurs
 
-Conformément au RGPD, tout Utilisateur dispose d'un droit d'accès, de rectification, d'effacement, de portabilité et d'opposition au traitement de ses données. Ces droits s'exercent en contactant l'Opérateur à **contact@kescomminges.fr** ou par courrier à l'adresse du siège social.
+Conformément au RGPD, tout Utilisateur dispose d'un droit d'accès, de rectification, d'effacement, de portabilité et d'opposition au traitement de ses données. Ces droits s'exercent en contactant l'Opérateur via [notre formulaire de contact](https://kescomminges.fr/contact) ou par courrier à l'adresse du siège social.
 
 En cas de litige non résolu, l'Utilisateur peut saisir la **CNIL** ([www.cnil.fr](https://www.cnil.fr)).
 
@@ -197,4 +197,4 @@ La plateforme de résolution des litiges en ligne de la Commission européenne e
 
 ---
 
-*Pour toute question relative aux présentes CGU : **contact@kescomminges.fr***
+*Pour toute question relative aux présentes CGU : [formulaire de contact](https://kescomminges.fr/contact)*
