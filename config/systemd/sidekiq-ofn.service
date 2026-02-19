@@ -13,14 +13,17 @@ WorkingDirectory=/home/kescomminges/ofn/openfoodnetwork
 EnvironmentFile=/home/kescomminges/ofn/openfoodnetwork/.env
 
 Environment=RAILS_ENV=production
+Environment=DISABLE_SPRING=1
 Environment=RBENV_ROOT=/home/kescomminges/.rbenv
 Environment=PATH=/home/kescomminges/.rbenv/shims:/home/kescomminges/.rbenv/bin:/usr/local/bin:/usr/bin:/bin
 
-ExecStart=/home/kescomminges/.rbenv/bin/rbenv exec bundle exec sidekiq \
+ExecStart=/home/kescomminges/.rbenv/shims/bundle exec sidekiq \
   --queue mailers \
   --queue default \
   --config config/sidekiq.yml \
   --environment production
+
+TimeoutStartSec=120s
 
 # Signal d'arrêt propre — Sidekiq finit les jobs en cours avant de s'arrêter
 ExecReload=/bin/kill -TSTP $MAINPID
