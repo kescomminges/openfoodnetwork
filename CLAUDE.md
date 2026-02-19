@@ -3,6 +3,20 @@
 Ce fichier documente les décisions d'architecture, les personnalisations et les procédures de maintenance
 de l'instance Open Food Network déployée pour kescomminges.fr.
 
+## Instruction pour Claude
+
+**Au début de chaque session**, lire `session.md` (s'il existe) pour reprendre le contexte.
+**Après chaque réponse**, mettre à jour `session.md` avec :
+- Le résumé de ce qui a été fait dans cet échange
+- L'état des todos en cours (non terminés)
+
+**Après chaque modification de fichier**, commiter et pousser immédiatement :
+```bash
+git add -A
+git commit -m "message court et descriptif"
+git push origin HEAD
+```
+
 ---
 
 ## Contexte
