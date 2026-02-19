@@ -584,7 +584,7 @@ cmd_deploy() {
   header "Installation des gems (bundle install)"
   local start
   start=$(date +%s)
-  if bundle install --jobs 4 --retry 3 --without development test; then
+  if bundle config set --local without 'development test' && bundle install --jobs 4 --retry 3; then
     success "bundle install terminé en $(elapsed $start)"
   else
     error "bundle install a échoué"
