@@ -10,21 +10,16 @@ _Dernière mise à jour : 2026-02-19_
 - Mise en place du système session.md + instruction commit+push systématique dans CLAUDE.md
 
 ### 2026-02-19 — Session 2
-- Erreur 500 sur /contact signalée
-- Commit responsable : `659959b9f0` — "feat: add contact form with invisible_captcha"
-- Investigation menée :
-  - Fichiers créés : ContactController, ContactMailer, vue contact/show, contact_mailer/contact_message
-  - Routes OK : GET /contact → contact#show, POST /contact → contact#submit
-  - Traductions OK : contact_page.* présentes dans fr.yml lignes 5079-5099
-  - invisible_captcha : gem déjà présente upstream (utilisée aussi dans spree/users_controller)
-  - Gemfile.lock contient invisible_captcha 2.3.0
-  - Impossible de tester Rails localement (Ruby 3.3 sur machine dev, Gemfile requiert 3.4)
-- **Diagnostic bloqué** : logs de production nécessaires pour identifier l'exception
-  → Demandé à l'utilisateur de fournir : `tail -200 log/production.log`
+- Erreur 500 sur /contact diagnostiquée et corrigée
+  - Cause : `ContactController < ApplicationController` n'incluait pas `Spree::Core::ControllerHelpers::Order`
+  - Le layout darkswarm rend `_cart_sidebar.html.haml` qui appelle `current_order` → méthode absente
+  - Fix : ajout de `include Spree::Core::ControllerHelpers::Order` dans ContactController
+  - Commit : `01ae84c25c` — poussé sur kesco_custom1
+  - **À faire sur le serveur** : `bin/deploy deploy` pour déployer le fix
 
 ## Todos en cours
 
-- [ ] **URGENT** : Diagnostiquer erreur 500 sur /contact → attendre les logs de prod de l'utilisateur
+- [ ] Déployer le fix /contact sur le serveur : `bin/deploy deploy`
 
 ## Tâches TODO connues (backlog projet)
 
