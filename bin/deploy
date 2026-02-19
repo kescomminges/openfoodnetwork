@@ -41,8 +41,8 @@ UPDATE_STRATEGY="tag"
 
 # Services systemd — ajuster selon votre installation
 # Vérifiez avec : systemctl list-units | grep -E 'puma|sidekiq'
-PUMA_SERVICE="puma"
-SIDEKIQ_SERVICE="sidekiq"
+PUMA_SERVICE="puma-ofn"
+SIDEKIQ_SERVICE="sidekiq-ofn"
 
 # Base de données (PostgreSQL)
 # DB_NAME peut être surchargée via la variable d'environnement DATABASE_URL
