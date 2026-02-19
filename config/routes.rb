@@ -14,6 +14,10 @@ Openfoodnetwork::Application.routes.draw do
   get "/map", to: "map#index", as: :map
   get "/sell", to: "home#sell", as: :sell
 
+  # Pages légales
+  get "/conditions-utilisation", to: "legal#cgu",               as: :legal_cgu
+  get "/mentions-legales",       to: "legal#mentions_legales",   as: :legal_mentions_legales
+
   get "/register", to: "registration#index", as: :registration
   get "/register/auth", to: "registration#authenticate", as: :registration_auth
   resources :locales, only: [:show]

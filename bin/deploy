@@ -772,6 +772,16 @@ cmd_deploy() {
   fi
   echo ""
 
+  # ── Pages légales (Markdown → HAML) ─────────────────────────────────────────
+  header "Génération des pages légales (legal:build)"
+  start=$(date +%s)
+  if bundle exec rails legal:build RAILS_ENV="$RAILS_ENV"; then
+    success "legal:build terminé en $(elapsed $start)"
+  else
+    warn "legal:build a échoué (non bloquant — pages légales non mises à jour)"
+  fi
+  echo ""
+
   # ── Assets precompile ────────────────────────────────────────────────────────
   header "Compilation des assets (assets:precompile)"
   start=$(date +%s)
