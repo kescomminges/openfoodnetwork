@@ -4,8 +4,7 @@ After=network.target postgresql.service redis.service
 Wants=postgresql.service redis.service
 
 [Service]
-Type=notify
-WatchdogSec=10s
+Type=simple
 
 User=kescomminges
 Group=kescomminges
@@ -16,11 +15,12 @@ EnvironmentFile=/home/kescomminges/ofn/openfoodnetwork/.env
 
 # Rails + rbenv
 Environment=RAILS_ENV=production
+Environment=DISABLE_SPRING=1
 Environment=RBENV_ROOT=/home/kescomminges/.rbenv
 Environment=PATH=/home/kescomminges/.rbenv/shims:/home/kescomminges/.rbenv/bin:/usr/local/bin:/usr/bin:/bin
 
 # Puma écoute sur localhost uniquement (nginx en reverse proxy)
-ExecStart=/home/kescomminges/.rbenv/bin/rbenv exec bundle exec puma \
+ExecStart=/home/kescomminges/.rbenv/shims/bundle exec puma \
   --config config/puma.rb \
   --environment production
 
@@ -29,6 +29,10 @@ ExecReload=/bin/kill -SIGUSR1 $MAINPID
 
 Restart=on-failure
 RestartSec=5s
+
+# Laisser le temps à Puma de démarrer (preload_app + workers)
+TimeoutStartSec=120s
+TimeoutStopSec=30s
 
 StandardOutput=journal
 StandardError=journal
