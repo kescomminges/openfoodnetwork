@@ -10,6 +10,8 @@ _Dernière mise à jour : 2026-02-19_
 - Mise en place du système session.md :
   - Instruction ajoutée dans `CLAUDE.md` pour charger session.md en début de session
   - Ce fichier créé pour persister le contexte entre sessions
+- Ajout de l'instruction de commit+push systématique dans `CLAUDE.md`
+  → Chaque modification de fichier doit être commitée et poussée immédiatement sur `kesco_custom1`
 
 ## Todos en cours
 
