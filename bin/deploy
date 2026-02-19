@@ -64,8 +64,8 @@ LOG_FILE="$HOME/deploys.log"
 
 # Health check
 HEALTH_CHECK_URL="http://localhost:3000"
-HEALTH_CHECK_RETRIES=6
-HEALTH_CHECK_WAIT=10  # secondes entre chaque tentative
+HEALTH_CHECK_RETRIES=12
+HEALTH_CHECK_WAIT=15  # secondes entre chaque tentative
 
 # Rails env
 export RAILS_ENV="production"
@@ -747,8 +747,8 @@ cmd_deploy() {
 
   # ── Health check ────────────────────────────────────────────────────────────
   header "Vérification de l'application"
-  log "Attente du démarrage ($HEALTH_CHECK_WAIT s)..."
-  sleep "$HEALTH_CHECK_WAIT"
+  log "Attente du démarrage de Puma (preload_app prend 60-90s)..."
+  sleep 60
 
   local ok=0
   for i in $(seq 1 "$HEALTH_CHECK_RETRIES"); do
