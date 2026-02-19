@@ -67,7 +67,7 @@ HEALTH_CHECK_RETRIES=6
 HEALTH_CHECK_WAIT=10  # secondes entre chaque tentative
 
 # Rails env
-RAILS_ENV="production"
+export RAILS_ENV="production"
 
 # Désactive spring (gem de dev qui ne doit pas tourner en production)
 export DISABLE_SPRING=1
