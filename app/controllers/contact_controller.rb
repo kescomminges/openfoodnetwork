@@ -5,6 +5,8 @@
 class ContactController < ApplicationController
   layout "darkswarm"
 
+  include Spree::Core::ControllerHelpers::Order
+
   invisible_captcha only: :submit, honeypot: :firstname
 
   def show
