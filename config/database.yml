@@ -17,8 +17,8 @@ test:
 
 production:
   <<: *defaults
-  database: open_food_network_prod
+  database: <%= ENV.fetch('OFN_DB_NAME', 'open_food_network_prod') %>
 
 staging:
   <<: *defaults
-  database: open_food_network_prod
+  database: <%= ENV.fetch('OFN_DB_NAME', 'open_food_network_prod') %>
