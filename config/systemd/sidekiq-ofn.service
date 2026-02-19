@@ -1,0 +1,41 @@
+[Unit]
+Description=Sidekiq Background Worker — Kescomminges OFN
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+
+User=kescomminges
+Group=kescomminges
+WorkingDirectory=/home/kescomminges/ofn/openfoodnetwork
+
+EnvironmentFile=/home/kescomminges/ofn/openfoodnetwork/.env
+
+Environment=RAILS_ENV=production
+Environment=RBENV_ROOT=/home/kescomminges/.rbenv
+Environment=PATH=/home/kescomminges/.rbenv/shims:/home/kescomminges/.rbenv/bin:/usr/local/bin:/usr/bin:/bin
+
+ExecStart=/home/kescomminges/.rbenv/bin/rbenv exec bundle exec sidekiq \
+  --queue mailers \
+  --queue default \
+  --config config/sidekiq.yml \
+  --environment production
+
+# Signal d'arrêt propre — Sidekiq finit les jobs en cours avant de s'arrêter
+ExecReload=/bin/kill -TSTP $MAINPID
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+Restart=on-failure
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sidekiq-ofn
+
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

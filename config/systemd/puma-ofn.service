@@ -1,0 +1,42 @@
+[Unit]
+Description=Puma HTTP Server — Kescomminges OFN
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=notify
+WatchdogSec=10s
+
+User=kescomminges
+Group=kescomminges
+WorkingDirectory=/home/kescomminges/ofn/openfoodnetwork
+
+# Variables d'environnement de l'application
+EnvironmentFile=/home/kescomminges/ofn/openfoodnetwork/.env
+
+# Rails + rbenv
+Environment=RAILS_ENV=production
+Environment=RBENV_ROOT=/home/kescomminges/.rbenv
+Environment=PATH=/home/kescomminges/.rbenv/shims:/home/kescomminges/.rbenv/bin:/usr/local/bin:/usr/bin:/bin
+
+# Puma écoute sur localhost uniquement (nginx en reverse proxy)
+ExecStart=/home/kescomminges/.rbenv/bin/rbenv exec bundle exec puma \
+  --config config/puma.rb \
+  --environment production
+
+# Reload zero-downtime (SIGUSR1 = redémarrage progressif des workers)
+ExecReload=/bin/kill -SIGUSR1 $MAINPID
+
+Restart=on-failure
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=puma-ofn
+
+# Durcissement sécurité
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
