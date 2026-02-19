@@ -11,15 +11,25 @@ _Dernière mise à jour : 2026-02-19_
 
 ### 2026-02-19 — Session 2
 - Erreur 500 sur /contact diagnostiquée et corrigée
-  - Cause : `ContactController < ApplicationController` n'incluait pas `Spree::Core::ControllerHelpers::Order`
-  - Le layout darkswarm rend `_cart_sidebar.html.haml` qui appelle `current_order` → méthode absente
-  - Fix : ajout de `include Spree::Core::ControllerHelpers::Order` dans ContactController
-  - Commit : `01ae84c25c` — poussé sur kesco_custom1
-  - **À faire sur le serveur** : `bin/deploy deploy` pour déployer le fix
+  - Cause : `ContactController` n'incluait pas `Spree::Core::ControllerHelpers::Order`
+  - Fix : ajout de `include Spree::Core::ControllerHelpers::Order`
+  - Commit : `01ae84c25c`
+  - **À faire** : `bin/deploy deploy` sur le serveur pour déployer
+
+### 2026-02-19 — Session 3
+- Création de `bin/test_smtp` — outil de debug SMTP autonome (sans Rails)
+  - Lit la config depuis `.env` automatiquement
+  - Supporte les options --host, --port, --user, --pass, --from, --to, --tls, --ssl, --verbose
+  - Mode --sidekiq pour tester via ActionMailer/Sidekiq
+  - Commit : `6ba69d4738`
+  - Config actuelle .env : MAIL_HOST=s-entraider.net, port 587, TLS, user=ne-pas-repondre@s-entraider.net
+  - Objectif : trouver la config OVH pour contact@kescomminges.fr
 
 ## Todos en cours
 
-- [ ] Déployer le fix /contact sur le serveur : `bin/deploy deploy`
+- [ ] Déployer le fix /contact sur le serveur : `bin/deploy deploy` (ou `git pull` + restart puma)
+- [ ] Tester `bin/test_smtp` sur le serveur avec les credentials OVH de contact@kescomminges.fr
+- [ ] Mettre à jour `.env` avec la config SMTP qui fonctionne pour contact@kescomminges.fr
 
 ## Tâches TODO connues (backlog projet)
 
