@@ -47,7 +47,7 @@ SIDEKIQ_SERVICE="sidekiq-ofn"
 # Base de données (PostgreSQL)
 # DB_NAME peut être surchargée via la variable d'environnement DATABASE_URL
 # ou renseignée ici directement
-DB_NAME="${OFN_DB_NAME:-openfoodnetwork_production}"
+DB_NAME="${OFN_DB_NAME:-open_food_network_prod}"
 DB_USER="${OFN_DB_USERNAME:-ofn}"
 DB_HOST="${OFN_DB_HOST:-localhost}"
 
