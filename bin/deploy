@@ -14,7 +14,7 @@
 #
 # Prérequis :
 #   - rbenv installé dans $HOME de l'user qui lance le script
-#   - nodenv installé dans $HOME de l'user qui lance le script
+#   - nvm installé dans $HOME de l'user qui lance le script (NVM_DIR=$HOME/.nvm)
 #   - sudo configuré pour systemctl restart/reload sur les services Puma/Sidekiq
 #     Exemple /etc/sudoers.d/deploy-ofn :
 #       deploy ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn
@@ -132,12 +132,13 @@ init_env() {
     exit 1
   fi
 
-  # Charger nodenv
-  if [ -d "$HOME/.nodenv" ]; then
-    export PATH="$HOME/.nodenv/bin:$PATH"
-    eval "$(nodenv init - bash)"
+  # Charger nvm (nécessaire dans les shells non-interactifs)
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$NVM_DIR/nvm.sh" --no-use
   else
-    warn "nodenv introuvable dans $HOME/.nodenv — Node ne sera pas géré automatiquement"
+    warn "nvm introuvable dans $NVM_DIR — Node ne sera pas géré automatiquement"
   fi
 
   # Se placer dans le répertoire de l'application
@@ -306,38 +307,43 @@ ensure_ruby() {
 }
 
 ensure_node() {
-  if ! command -v nodenv &>/dev/null; then
-    warn "nodenv non disponible — Node non vérifié"
+  # nvm doit avoir été chargé dans init_env
+  if ! command -v nvm &>/dev/null; then
+    warn "nvm non disponible — Node non vérifié"
     return 0
   fi
 
+  # Lire la version requise depuis .nvmrc (prioritaire) ou .node-version
   local required
-  required=$(cat "$APP_DIR/.node-version" | tr -d '[:space:]')
+  if [ -f "$APP_DIR/.nvmrc" ]; then
+    required=$(cat "$APP_DIR/.nvmrc" | tr -d '[:space:]')
+  elif [ -f "$APP_DIR/.node-version" ]; then
+    required=$(cat "$APP_DIR/.node-version" | tr -d '[:space:]')
+  else
+    warn "Ni .nvmrc ni .node-version trouvé — Node non vérifié"
+    return 0
+  fi
+
   local current
-  current=$(nodenv version-name 2>/dev/null || echo "none")
+  current=$(node --version 2>/dev/null | tr -d 'v[:space:]' || echo "none")
 
   if [ "$current" = "$required" ]; then
     success "Node $required déjà actif"
     return 0
   fi
 
-  if nodenv versions --bare 2>/dev/null | grep -qx "$required"; then
-    success "Node $required disponible dans nodenv"
+  # Vérifier si la version est déjà installée dans nvm
+  if nvm ls "$required" --no-colors 2>/dev/null | grep -q "$required"; then
+    log "Activation de Node $required..."
+    nvm use "$required"
+    success "Node $required actif"
   else
-    warn "Node $required non installé — installation en cours..."
-    log "Mise à jour de node-build..."
-    if [ -d "$(nodenv root)/plugins/node-build" ]; then
-      git -C "$(nodenv root)/plugins/node-build" pull --quiet
-    else
-      error "node-build introuvable dans $(nodenv root)/plugins/"
-      return 1
-    fi
-
-    log "Installation de Node $required..."
+    warn "Node $required non installé — installation via nvm..."
     local start
     start=$(date +%s)
-    if nodenv install "$required"; then
-      success "Node $required installé en $(elapsed $start)"
+    if nvm install "$required"; then
+      nvm use "$required"
+      success "Node $required installé et activé en $(elapsed $start)"
     else
       error "Échec de l'installation de Node $required"
       return 1
@@ -418,13 +424,15 @@ cmd_update() {
     warn "Ruby $new_ruby sera installé automatiquement via rbenv"
   fi
 
+  # Vérifier changement de version Node (.nvmrc en priorité, sinon .node-version)
   local new_node
   new_node=$(git show "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH:.node-version" 2>/dev/null | tr -d '[:space:]')
   local cur_node
-  cur_node=$(cat .node-version | tr -d '[:space:]')
+  cur_node=$(cat .nvmrc 2>/dev/null || cat .node-version 2>/dev/null || echo "")
+  cur_node=$(echo "$cur_node" | tr -d '[:space:]')
   if [ -n "$new_node" ] && [ "$new_node" != "$cur_node" ]; then
     warn "Changement de version Node : $cur_node → $new_node"
-    warn "Node $new_node sera installé automatiquement via nodenv"
+    warn "Node $new_node sera installé automatiquement via nvm"
   fi
 
   # ── Nouvelles migrations ────────────────────────────────────────────────────
@@ -850,7 +858,7 @@ cmd_status() {
   # Versions
   echo -e "${BOLD}Versions :${NC}"
   echo "  Ruby   : $(ruby --version 2>/dev/null || echo 'non disponible')"
-  echo "  Node   : $(node --version 2>/dev/null || echo 'non disponible')"
+  echo "  Node   : $(node --version 2>/dev/null || echo 'non disponible') (nvm)"
   echo "  Bundle : $(bundle --version 2>/dev/null || echo 'non disponible')"
   echo ""
 
