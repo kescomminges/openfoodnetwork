@@ -11,7 +11,7 @@
     = strip_tags(yield(:page_title))
   - else
     = t("spree.admin.tab.#{controller.controller_name}", :default => controller.controller_name.titleize)
-  = " - OFN #{t(:administration)}"
+  = " - Kescomminges #{t(:administration)}"
 
 %link{:href => "https://fonts.googleapis.com/css?family=Open+Sans:400italic,600italic,400,600&subset=latin,cyrillic,greek,vietnamese", :rel => "stylesheet", :type => "text/css"}
 = stylesheet_pack_tag 'admin-style-v3', media: "screen, print"

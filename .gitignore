@@ -60,3 +60,5 @@ yarn-debug.log*
 /config/credentials.yml.enc
 /config/master.key
 .secrets
+.osgrep
+*.key
