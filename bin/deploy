@@ -85,8 +85,8 @@ else
   _ENV_FILE="$APP_DIR/.env"
 fi
 # Charger les variables DB depuis le fichier .env correspondant
-if [ -f "$_ENV_FILE" ] && ! file "$_ENV_FILE" | grep -q "data"; then
-  # Fichier lisible (git-crypt déverrouillé)
+# (git-crypt doit être déverrouillé — vérifié plus loin dans preflight_checks)
+if [ -f "$_ENV_FILE" ]; then
   set -a
   # shellcheck source=/dev/null
   source "$_ENV_FILE" 2>/dev/null || true
