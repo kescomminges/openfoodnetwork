@@ -50,6 +50,7 @@ SIDEKIQ_SERVICE="sidekiq-ofn"
 DB_NAME="${OFN_DB_NAME:-open_food_network_prod}"
 DB_USER="${OFN_DB_USERNAME:-ofn}"
 DB_HOST="${OFN_DB_HOST:-localhost}"
+DB_PORT="${OFN_DB_PORT:-5432}"
 
 # Répertoire de sauvegarde (accessible depuis l'user courant)
 BACKUP_DIR="$HOME/backups/ofn"
@@ -181,10 +182,10 @@ preflight_checks() {
   fi
 
   # 2. PostgreSQL accessible
-  if pg_isready -h "$DB_HOST" -U "$DB_USER" -q 2>/dev/null; then
+  if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -q 2>/dev/null; then
     success "PostgreSQL accessible"
   else
-    error "PostgreSQL inaccessible (host: $DB_HOST, user: $DB_USER)"
+    error "PostgreSQL inaccessible (host: $DB_HOST:$DB_PORT, user: $DB_USER)"
     failed=1
   fi
 
@@ -256,6 +257,7 @@ backup_database() {
 
   if PGPASSWORD="${OFN_DB_PASSWORD:-}" pg_dump \
       -h "$DB_HOST" \
+      -p "$DB_PORT" \
       -U "$DB_USER" \
       "$DB_NAME" \
       | gzip -9 > "$backup_file"; then
@@ -822,7 +824,7 @@ _do_rollback() {
     echo ""
     echo "  Backup disponible : $backup_file"
     echo "  Pour restaurer :"
-    echo "    zcat '$backup_file' | psql -h $DB_HOST -U $DB_USER $DB_NAME"
+    echo "    zcat '$backup_file' | psql -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME"
     echo "  Ou rollback de la dernière migration :"
     echo "    bundle exec rails db:rollback RAILS_ENV=$RAILS_ENV"
   fi
