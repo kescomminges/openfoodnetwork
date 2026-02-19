@@ -438,6 +438,12 @@ cmd_update() {
 
   if [ "$commit_count" -eq 0 ]; then
     success "Déjà à jour sur $target_label."
+    echo ""
+    if confirm "Lancer quand même le déploiement (bundle, assets, migrations, restart) ?"; then
+      cmd_deploy
+    else
+      log "Opération annulée."
+    fi
     exit 0
   fi
 
