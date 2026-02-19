@@ -235,32 +235,91 @@ pour envoyer un `pageview` à chaque navigation côté client (même comportemen
 
 ## Procédures de maintenance
 
-### Déploiement
+### Script de déploiement — `bin/deploy`
 
-Le déploiement est géré via Ansible (projet séparé `ofn-install`).
-Voir : https://github.com/openfoodfoundation/ofn-install
+Toutes les opérations de déploiement et de mise à jour passent par le script `bin/deploy`,
+versionné dans ce dépôt. Il doit être lancé depuis l'user qui possède le code
+(ou un user dédié `deploy` avec les droits sudo appropriés).
 
-### Mise à jour depuis l'upstream
+#### Commandes disponibles
+
+| Commande | Description |
+|---|---|
+| `bin/deploy status` | Affiche l'état : commit déployé, retard upstream, services, backups |
+| `bin/deploy update` | Mise à jour complète depuis upstream (fetch → diff → confirmation → rebase → deploy) |
+| `bin/deploy deploy` | Déploie le code courant sans toucher à git (post-rebase manuel) |
+| `bin/deploy rollback` | Revient au commit avant le dernier déploiement |
+| `bin/deploy backup` | Sauvegarde manuelle de la BDD PostgreSQL |
+| `bin/deploy help` | Aide en ligne |
+
+#### Flux `update` (usage normal — mise à jour OFN)
+
+```
+1. Vérifications pré-vol (espace disque, PostgreSQL, git propre, sudo)
+2. git fetch upstream/master
+3. Affichage des commits, fichiers modifiés, migrations, conflits potentiels
+4. Confirmation interactive
+5. Sauvegarde automatique de la BDD (backup horodaté dans ~/backups/ofn/)
+6. git rebase upstream/master
+   └─ En cas de conflit → abort + instructions manuelles
+7. Push sur le fork (origin)
+8. Déploiement :
+   a. Vérification/installation Ruby (rbenv) si .ruby-version a changé
+   b. Vérification/installation Node (nodenv) si .node-version a changé
+   c. bundle install
+   d. yarn install
+   e. db:migrate (avec détection et confirmation si migration destructive)
+   f. assets:precompile
+   g. systemctl reload puma (ou restart) + restart sidekiq
+   h. Health check HTTP (rollback automatique si échec)
+```
+
+#### Configuration du script
+
+Éditez les variables en tête de `bin/deploy` :
 
 ```bash
-# 1. Récupérer les modifications officielles
-git fetch upstream
-
-# 2. Rebaser nos commits par-dessus
-git rebase upstream/master
-
-# 3. En cas de conflit, résoudre puis :
-git rebase --continue
-
-# 4. Pousser le résultat
-git push origin master --force-with-lease
-
-# 5. Rebuilder les assets et redémarrer
-bundle install
-yarn install
-bundle exec rails assets:precompile
-sudo systemctl restart puma
+APP_DIR="/home/kescomminges/ofn/openfoodnetwork"
+PUMA_SERVICE="puma"        # ← à ajuster selon votre systemd
+SIDEKIQ_SERVICE="sidekiq"  # ← à ajuster selon votre systemd
+DB_NAME="openfoodnetwork_production"
+DB_USER="ofn"
+BACKUP_DIR="$HOME/backups/ofn"
+BACKUP_KEEP=7              # nombre de backups à conserver
 ```
+
+#### Configuration sudoers (si user dédié)
+
+Si le script est lancé depuis un user différent du propriétaire du code,
+créer `/etc/sudoers.d/deploy-ofn` :
+
+```
+deploy ALL=(root) NOPASSWD: /bin/systemctl restart puma
+deploy ALL=(root) NOPASSWD: /bin/systemctl reload puma
+deploy ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq
+```
+
+#### Rollback
+
+Un backup PostgreSQL est créé automatiquement avant chaque déploiement.
+En cas d'échec du health check, le rollback git est automatique.
+Le rollback de schéma BDD reste **manuel** (risque de perte de données) :
+
+```bash
+# Lister les backups disponibles
+ls -lht ~/backups/ofn/
+
+# Restaurer un backup
+zcat ~/backups/ofn/pre-deploy-20260219-143022.sql.gz \
+  | psql -h localhost -U ofn openfoodnetwork_production
+```
+
+#### Gestion automatique des versions Ruby/Node
+
+Lors d'une mise à jour upstream, si `.ruby-version` ou `.node-version` changent,
+le script détecte la nouvelle version requise et l'installe automatiquement via
+`rbenv install` / `nodenv install` (avec mise à jour préalable de ruby-build/node-build).
+rbenv et nodenv doivent être installés dans `$HOME` de l'user qui lance le script.
 
 ### Fichiers susceptibles d'avoir des conflits lors des rebases
 
