@@ -233,6 +233,91 @@ pour envoyer un `pageview` à chaque navigation côté client (même comportemen
 
 ---
 
+## Gestion des secrets — git-crypt
+
+Le dépôt est **public sur GitHub**. Les fichiers sensibles sont chiffrés avec
+[git-crypt](https://github.com/AGWA/git-crypt) — ils apparaissent comme des
+binaires illisibles sur GitHub mais sont déchiffrés automatiquement sur les
+machines qui possèdent la clé.
+
+### Fichiers chiffrés (déclarés dans `.gitattributes`)
+
+| Fichier | Contient |
+|---|---|
+| `.env` | SMTP_PASSWORD, clés Stripe, clés AR encryption, etc. |
+| `config/master.key` | Clé Rails credentials |
+| `config/newrelic.yml` | Clé API NewRelic |
+
+### Initialisation (une seule fois, sur la machine de dev)
+
+```bash
+# Installer git-crypt
+sudo apt install git-crypt
+
+# Initialiser dans le dépôt
+git-crypt init
+
+# Exporter la clé symétrique → stocker dans Bitwarden / KeePass
+git-crypt export-key ~/kescomminges-ofn-secrets.key
+
+# Le .env existant était en clair — le retirer du cache et recommiter
+git rm --cached .env
+git add .env .gitattributes
+git commit -m "chore: encrypt .env with git-crypt"
+git push origin kesco_custom1 --force-with-lease
+```
+
+> **⚠ Important :** changer le mot de passe SMTP (et tout autre secret présent
+> dans l'historique git avant le chiffrement) — l'historique passé reste lisible.
+
+### Déverrouiller sur le serveur (une seule fois)
+
+```bash
+# Installer git-crypt sur le serveur
+sudo apt install git-crypt
+
+# Copier la clé sur le serveur (via scp ou coller depuis Bitwarden)
+scp ~/kescomminges-ofn-secrets.key kescomminges@serveur:~/
+
+# Déverrouiller le dépôt
+cd /home/kescomminges/ofn/openfoodnetwork
+git-crypt unlock ~/kescomminges-ofn-secrets.key
+
+# Supprimer la clé du serveur (elle est désormais dans .git/git-crypt/)
+rm ~/kescomminges-ofn-secrets.key
+```
+
+Une fois déverrouillé, les `git pull` / rebases déchiffrent automatiquement.
+Le dépôt reste déverrouillé de façon permanente sur cette machine.
+
+### Ajouter un nouveau secret
+
+```bash
+# Éditer .env localement (déjà déverrouillé)
+nano .env
+
+# Commiter — git-crypt chiffre automatiquement
+git add .env
+git commit -m "chore: add new secret to .env"
+git push origin kesco_custom1
+```
+
+### Intégration dans `bin/deploy`
+
+Le script vérifie au démarrage que git-crypt est déverrouillé (étape 5 de
+`preflight_checks`). Si ce n'est pas le cas, le déploiement est bloqué avec
+le message :
+
+```
+✘ git-crypt non déverrouillé — les secrets sont inaccessibles
+  → git-crypt unlock /chemin/vers/kescomminges-ofn-secrets.key
+```
+
+Après chaque rebase, le script force un `git checkout HEAD -- .env` pour
+s'assurer que git-crypt a bien rejoué les filtres de déchiffrement.
+
+---
+
 ## Procédures de maintenance
 
 ### Script de déploiement — `bin/deploy`

@@ -8,3 +8,10 @@
 # Same thing for following files, but they don't have an sh extension
 pre-commit eol=lf
 webpack-dev-server eol=lf
+
+# git-crypt — fichiers chiffrés dans le dépôt (illisibles sans la clé)
+# Initialiser avec : git-crypt init && git-crypt export-key ~/kescomminges-ofn-secrets.key
+# Déverrouiller avec : git-crypt unlock ~/kescomminges-ofn-secrets.key
+.env filter=git-crypt diff=git-crypt
+config/master.key filter=git-crypt diff=git-crypt
+config/newrelic.yml filter=git-crypt diff=git-crypt
