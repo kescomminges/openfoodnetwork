@@ -33,8 +33,11 @@ APP_DIR="/home/kescomminges/ofn/openfoodnetwork"
 
 # Remotes git
 UPSTREAM_REMOTE="upstream"
-UPSTREAM_BRANCH="master"
+UPSTREAM_BRANCH="master"   # utilisé uniquement pour les fetches de tags
 ORIGIN_REMOTE="origin"
+
+# Stratégie de mise à jour : "tag" (dernier tag stable) ou "branch" (master)
+UPDATE_STRATEGY="tag"
 
 # Services systemd — ajuster selon votre installation
 # Vérifiez avec : systemctl list-units | grep -E 'puma|sidekiq'
@@ -65,6 +68,9 @@ HEALTH_CHECK_WAIT=10  # secondes entre chaque tentative
 
 # Rails env
 RAILS_ENV="production"
+
+# Désactive spring (gem de dev qui ne doit pas tourner en production)
+export DISABLE_SPRING=1
 
 # =============================================================================
 # ── COULEURS ──────────────────────────────────────────────────────────────────
@@ -380,28 +386,51 @@ has_destructive_migrations() {
 # =============================================================================
 
 cmd_update() {
-  header "Mise à jour depuis $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+  # ── Résoudre la cible (tag ou branche) ─────────────────────────────────────
+  local target_ref target_label
 
-  preflight_checks
+  if [ "$UPDATE_STRATEGY" = "tag" ]; then
+    header "Mise à jour vers le dernier tag stable upstream"
+    log "Récupération des tags upstream..."
+    git fetch "$UPSTREAM_REMOTE" --tags --quiet
+    # Dernier tag trié par version sémantique
+    target_ref=$(git tag --sort=-version:refname \
+                   | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+                   | head -1)
+    if [ -z "$target_ref" ]; then
+      error "Aucun tag de version trouvé sur $UPSTREAM_REMOTE"
+      exit 1
+    fi
+    target_label="tag $target_ref"
+    success "Fetch terminé — dernier tag : $target_ref"
+  else
+    header "Mise à jour depuis $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+    log "Récupération des commits upstream..."
+    git fetch "$UPSTREAM_REMOTE" "$UPSTREAM_BRANCH" --quiet
+    target_ref="$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+    target_label="branche $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+    success "Fetch terminé"
+  fi
 
-  # ── Fetch upstream ──────────────────────────────────────────────────────────
-  log "Récupération des commits upstream..."
-  git fetch "$UPSTREAM_REMOTE" "$UPSTREAM_BRANCH" --quiet
-  success "Fetch terminé"
+  # ── Version actuellement déployée ──────────────────────────────────────────
+  local current_tag
+  current_tag=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "(aucun tag)")
 
   # ── Analyse des changements ─────────────────────────────────────────────────
   local commit_count
-  commit_count=$(git rev-list HEAD.."$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" --count)
+  commit_count=$(git rev-list HEAD.."$target_ref" --count)
 
   if [ "$commit_count" -eq 0 ]; then
-    success "Déjà à jour — aucun commit upstream à récupérer."
+    success "Déjà à jour sur $target_label."
     exit 0
   fi
 
   echo ""
-  echo -e "${BOLD}${commit_count} commit(s) disponibles depuis upstream :${NC}"
+  echo -e "${BOLD}Version actuelle :${NC} $current_tag  →  ${BOLD}Cible :${NC} $target_label"
   echo ""
-  git log HEAD.."$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" \
+  echo -e "${BOLD}${commit_count} commit(s) à intégrer :${NC}"
+  echo ""
+  git log HEAD.."$target_ref" \
     --oneline \
     --color=always \
     | head -30
@@ -409,25 +438,22 @@ cmd_update() {
     echo "  ... et $(( commit_count - 30 )) autres commits"
   fi
 
-  # ── Fichiers modifiés côté upstream ────────────────────────────────────────
+  # ── Fichiers modifiés ───────────────────────────────────────────────────────
   echo ""
   echo -e "${BOLD}Fichiers modifiés :${NC}"
-  git diff --stat HEAD.."$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" | tail -1
+  git diff --stat HEAD.."$target_ref" | tail -1
 
-  # ── Vérifier si .ruby-version ou .node-version changent ────────────────────
-  local new_ruby
-  new_ruby=$(git show "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH:.ruby-version" 2>/dev/null | tr -d '[:space:]')
-  local cur_ruby
+  # ── Changements Ruby/Node ───────────────────────────────────────────────────
+  local new_ruby cur_ruby
+  new_ruby=$(git show "$target_ref:.ruby-version" 2>/dev/null | tr -d '[:space:]')
   cur_ruby=$(cat .ruby-version | tr -d '[:space:]')
   if [ -n "$new_ruby" ] && [ "$new_ruby" != "$cur_ruby" ]; then
     warn "Changement de version Ruby : $cur_ruby → $new_ruby"
     warn "Ruby $new_ruby sera installé automatiquement via rbenv"
   fi
 
-  # Vérifier changement de version Node (.nvmrc en priorité, sinon .node-version)
-  local new_node
-  new_node=$(git show "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH:.node-version" 2>/dev/null | tr -d '[:space:]')
-  local cur_node
+  local new_node cur_node
+  new_node=$(git show "$target_ref:.node-version" 2>/dev/null | tr -d '[:space:]')
   cur_node=$(cat .nvmrc 2>/dev/null || cat .node-version 2>/dev/null || echo "")
   cur_node=$(echo "$cur_node" | tr -d '[:space:]')
   if [ -n "$new_node" ] && [ "$new_node" != "$cur_node" ]; then
@@ -437,15 +463,14 @@ cmd_update() {
 
   # ── Nouvelles migrations ────────────────────────────────────────────────────
   local new_migrations
-  new_migrations=$(git diff --name-only HEAD.."$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" \
+  new_migrations=$(git diff --name-only HEAD.."$target_ref" \
                    | grep '^db/migrate/' || true)
   if [ -n "$new_migrations" ]; then
     echo ""
     echo -e "${BOLD}Nouvelles migrations :${NC}"
     echo "$new_migrations" | while read -r f; do
-      # Détecter si destructive (chercher dans la version upstream)
       local content
-      content=$(git show "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH:$f" 2>/dev/null || true)
+      content=$(git show "$target_ref:$f" 2>/dev/null || true)
       if echo "$content" | grep -qiE 'drop_table|remove_column|remove_index|execute.*DROP'; then
         echo -e "  ${RED}⚠ DROP${NC}  $f"
       else
@@ -469,7 +494,7 @@ cmd_update() {
   )
   local touched_custom=""
   for f in "${custom_files[@]}"; do
-    if git diff --name-only HEAD.."$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" | grep -qx "$f"; then
+    if git diff --name-only HEAD.."$target_ref" | grep -qx "$f"; then
       touched_custom="$touched_custom\n  ⚠  $f"
     fi
   done
@@ -481,12 +506,12 @@ cmd_update() {
 
   # ── Confirmation ────────────────────────────────────────────────────────────
   echo ""
-  if ! confirm "Lancer le rebase et le déploiement ?"; then
+  if ! confirm "Mettre à jour vers $target_label et déployer ?"; then
     log "Opération annulée."
     exit 0
   fi
 
-  # ── Sauvegarde de la BDD avant toute modification ──────────────────────────
+  # ── Sauvegarde BDD ──────────────────────────────────────────────────────────
   header "Sauvegarde pré-déploiement"
   local backup_file
   backup_file=$(backup_database "pre-update")
@@ -501,30 +526,32 @@ cmd_update() {
     echo "BACKUP=$backup_file"
   } > "$ROLLBACK_FILE"
 
-  # ── Rebase ──────────────────────────────────────────────────────────────────
-  header "Rebase upstream/$UPSTREAM_BRANCH"
-  log "git rebase $UPSTREAM_REMOTE/$UPSTREAM_BRANCH..."
+  # ── Rebase sur le tag / la branche cible ────────────────────────────────────
+  header "Rebase sur $target_label"
+  log "git rebase $target_ref..."
 
-  if ! git rebase "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"; then
+  if ! git rebase "$target_ref"; then
     echo ""
     error "CONFLIT lors du rebase — opération annulée."
     git rebase --abort 2>/dev/null || true
     echo ""
     echo "  Pour résoudre manuellement :"
-    echo "    git rebase $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+    echo "    git rebase $target_ref"
     echo "    # résoudre les conflits dans chaque fichier"
     echo "    git add <fichier_résolu>"
     echo "    git rebase --continue"
     echo "  Puis relancez : bin/deploy deploy"
-    logfile "ÉCHEC update — conflit rebase depuis $(git rev-parse --short HEAD)"
+    logfile "ÉCHEC update — conflit rebase sur $target_label"
     exit 1
   fi
 
   success "Rebase appliqué — $(git rev-list --count "$current_commit"..HEAD) commits intégrés"
 
-  # ── Pousser le résultat sur le fork ────────────────────────────────────────
-  log "Push sur $ORIGIN_REMOTE/$UPSTREAM_BRANCH..."
-  if git push "$ORIGIN_REMOTE" "$UPSTREAM_BRANCH" --force-with-lease --quiet; then
+  # ── Push sur le fork ────────────────────────────────────────────────────────
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  log "Push sur $ORIGIN_REMOTE/$current_branch..."
+  if git push "$ORIGIN_REMOTE" "$current_branch" --force-with-lease --quiet; then
     success "Fork mis à jour"
   else
     warn "Push sur $ORIGIN_REMOTE échoué (non bloquant)"
@@ -837,21 +864,27 @@ cmd_backup() {
 cmd_status() {
   header "État de l'instance Kescomminges OFN"
 
-  # Commit courant
-  echo -e "${BOLD}Commit déployé :${NC}"
+  # Commit / tag courant
+  local current_tag
+  current_tag=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "(aucun tag)")
+  echo -e "${BOLD}Version déployée :${NC} $current_tag"
   git log --oneline -3
   echo ""
 
-  # Retard par rapport à upstream
-  git fetch "$UPSTREAM_REMOTE" "$UPSTREAM_BRANCH" --quiet 2>/dev/null || true
-  local behind
-  behind=$(git rev-list HEAD.."$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" --count 2>/dev/null || echo "?")
-  if [ "$behind" = "0" ]; then
-    success "À jour avec upstream"
-  elif [ "$behind" = "?" ]; then
-    warn "Impossible de comparer avec upstream"
+  # Comparaison avec le dernier tag stable upstream
+  git fetch "$UPSTREAM_REMOTE" --tags --quiet 2>/dev/null || true
+  local latest_tag
+  latest_tag=$(git tag --sort=-version:refname \
+                 | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+                 | head -1)
+  if [ -z "$latest_tag" ]; then
+    warn "Impossible de récupérer les tags upstream"
+  elif [ "$current_tag" = "$latest_tag" ]; then
+    success "À jour — dernier tag upstream : $latest_tag"
   else
-    warn "$behind commit(s) de retard sur upstream/$UPSTREAM_BRANCH"
+    local behind
+    behind=$(git rev-list HEAD.."$latest_tag" --count 2>/dev/null || echo "?")
+    warn "Mise à jour disponible : $current_tag → $latest_tag ($behind commits)"
   fi
   echo ""
 
@@ -913,9 +946,10 @@ ${BOLD}USAGE${NC}
   bin/deploy <commande>
 
 ${BOLD}COMMANDES${NC}
-  update    Récupère les commits depuis upstream, affiche les changements,
-            demande confirmation, effectue le rebase, puis déploie.
-            C'est la commande principale pour suivre les mises à jour OFN.
+  update    Récupère le dernier tag stable depuis upstream (stratégie par
+            défaut : UPDATE_STRATEGY=tag), affiche les changements, demande
+            confirmation, effectue le rebase, puis déploie.
+            Mettre UPDATE_STRATEGY=branch pour suivre master à la place.
 
   deploy    Déploie le code courant sans toucher à git.
             Utile après un rebase manuel ou pour redéployer après un fix.
