@@ -1,6 +1,6 @@
 # Session — kescomminges.fr OFN
 
-_Dernière mise à jour : 2026-02-19_
+_Dernière mise à jour : 2026-02-20_
 
 ## Résumé des échanges récents
 
@@ -14,7 +14,6 @@ _Dernière mise à jour : 2026-02-19_
   - Cause : `ContactController` n'incluait pas `Spree::Core::ControllerHelpers::Order`
   - Fix : ajout de `include Spree::Core::ControllerHelpers::Order`
   - Commit : `01ae84c25c`
-  - **À faire** : `bin/deploy deploy` sur le serveur pour déployer
 
 ### 2026-02-19 — Session 3
 - Création de `bin/test_smtp` — outil de debug SMTP autonome (sans Rails)
@@ -25,9 +24,14 @@ _Dernière mise à jour : 2026-02-19_
   - Config actuelle .env : MAIL_HOST=s-entraider.net, port 587, TLS, user=ne-pas-repondre@s-entraider.net
   - Objectif : trouver la config OVH pour contact@kescomminges.fr
 
+### 2026-02-20 — Session 4
+- Pages légales `/conditions-utilisation` et `/mentions-legales` corrigées et opérationnelles
+  - Fix 1 : `legal:build` générait du HAML avec heredoc invalide → migré vers `.html.erb` (commit `e196951eb1`)
+  - Fix 2 : `LegalController` héritait de `ApplicationController` au lieu de `BaseController`
+    → `current_order` manquant dans le layout darkswarm (commit `4ab1a12cf7`)
+
 ## Todos en cours
 
-- [ ] Déployer le fix /contact sur le serveur : `bin/deploy deploy` (ou `git pull` + restart puma)
 - [ ] Tester `bin/test_smtp` sur le serveur avec les credentials OVH de contact@kescomminges.fr
 - [ ] Mettre à jour `.env` avec la config SMTP qui fonctionne pour contact@kescomminges.fr
 
