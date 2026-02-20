@@ -6,7 +6,7 @@
 # Routes :
 #   GET /conditions-utilisation  → legal#cgu
 #   GET /mentions-legales        → legal#mentions_legales
-class LegalController < ApplicationController
+class LegalController < BaseController
   layout "darkswarm"
 
   def cgu
