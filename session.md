@@ -30,6 +30,20 @@ _Dernière mise à jour : 2026-02-20_
   - Fix 2 : `LegalController` héritait de `ApplicationController` au lieu de `BaseController`
     → `current_order` manquant dans le layout darkswarm (commit `4ab1a12cf7`)
 
+### 2026-02-20 — Session 5
+- Discussion modèle économique Kescomminges :
+  - Structure juridique envisagée : SARL de famille (option IR possible au démarrage)
+  - Compta : dougs.fr (service en ligne)
+  - Modèle achat-revente validé pour le point relais (produits emballés uniquement, ex. viande sous vide)
+  - Marges prévues :
+    - 2,5% HT sur les ventes pour utilisation de la plateforme (facturé aux enterprises utilisatrices)
+    - 3,5% HT pour le retrait au point relais Kescomminges
+    - Total 6% pour les clients du point relais Kescomminges
+  - Facturation des 2,5% aux enterprises : manuelle (mensuelle sur la base des ventes)
+  - Analyse OFN : pas de mécanisme natif de "fee plateforme globale"
+    → Pour l'instant : gestion manuelle (attacher la fee manuellement à chaque cycle)
+    → À terme : développer une fee automatique (branche séparée, pas urgent)
+
 ## Todos en cours
 
 - [ ] Tester `bin/test_smtp` sur le serveur avec les credentials OVH de contact@kescomminges.fr
@@ -37,7 +51,16 @@ _Dernière mise à jour : 2026-02-20_
 
 ## Tâches TODO connues (backlog projet)
 
+- [ ] Juridique : rédiger CGV B2B pour les enterprises utilisant la plateforme (distinct des CGU acheteurs)
 - [ ] Branding : remplacer couleurs dans les fichiers SCSS (`$brand-colour`, `$ofn-brand`)
 - [ ] Branding : remplacer logos dans `public/default_images/`
 - [ ] Traductions : remplacer ~40 occurrences "CoopCircuits" → "Kescomminges" dans `config/locales/fr.yml`
 - [ ] Traductions : remplacer ~15 occurrences "Open Food Network"/"OFN" dans `config/locales/en_FR.yml`
+
+## Backlog développement (future branche feature)
+
+- [ ] Fee plateforme automatique (branche séparée à créer)
+  - Nouvelle préférence `Spree::Config.platform_fee_id`
+  - Callback `after_create` sur `OrderCycle` pour attacher automatiquement la fee
+  - Interface admin pour configurer la fee plateforme
+  - Similaire en complexité à l'intégration Plausible
