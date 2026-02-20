@@ -16,3 +16,4 @@ webpack-dev-server eol=lf
 .env.dev filter=git-crypt diff=git-crypt
 config/master.key filter=git-crypt diff=git-crypt
 config/newrelic.yml filter=git-crypt diff=git-crypt
+CLAUDE.md filter=git-crypt diff=git-crypt

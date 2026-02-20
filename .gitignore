@@ -62,3 +62,6 @@ yarn-debug.log*
 .secrets
 .osgrep
 *.key
+
+# Dossiers projet Kescomminges (données privées, hors code)
+KESCOMMINGES/
