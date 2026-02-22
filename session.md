@@ -1,6 +1,6 @@
 # Session — kescomminges.fr OFN
 
-_Dernière mise à jour : 2026-02-20_
+_Dernière mise à jour : 2026-02-22_
 
 ## Résumé des échanges récents
 
@@ -44,17 +44,41 @@ _Dernière mise à jour : 2026-02-20_
     → Pour l'instant : gestion manuelle (attacher la fee manuellement à chaque cycle)
     → À terme : développer une fee automatique (branche séparée, pas urgent)
 
+### 2026-02-22 — Session 6
+- **Migration KESCOMMINGES/ hors du dépôt OFN**
+  - Problème : git-crypt irrécupérable sur serveur prod après push de nouveaux blobs chiffrés
+  - Solution : dossier KESCOMMINGES/ migré vers dépôt privé séparé `github.com/kescomminges/KESCOMMINGES`
+  - Règle `KESCOMMINGES/** filter=git-crypt` retirée de `.gitattributes`
+  - `KESCOMMINGES/` retiré du dépôt OFN (commit `93a526dea6`)
+  - Dépôt KESCOMMINGES initialisé et poussé sur GitHub (branche `main`)
+
+- **Tracts PDF — nombreuses améliorations**
+  - Format A5 portrait (était A4) — correction dans le script ET dans le CSS
+  - Footer collé en bas : `.page { position:relative; height:210mm }` + `.footer { position:absolute; bottom:0 }`
+  - Bullets ronds : cercle sorti du `table-cell` → `<span>` `inline-block` avec `width/height:18px` + `border-radius:50%`
+  - Texte corps : `#adfcf9` (cyan clair illisible) → `#1a1a1a` (quasi-noir)
+  - `kescomminges` tout en minuscules partout (HTML + variables.yml)
+  - Délai commande : "avant le mardi midi" (au lieu de mercredi matin)
+  - Frais : 6% HT tout compris (clients), 3,5% HT (producteurs), 2,5% HT (boutique)
+  - "(phase 1)" supprimé du tract producteurs
+  - Reformulation projet : "réseau de proximité ancré dans le territoire"
+  - "L'Isle-en-Dodon" sans le (31)
+  - Paiement comptant à la livraison (au lieu de "paiement sécurisé en ligne")
+  - Produits simplifiés : Viandes, Fromages, Fruits & légumes, Boissons, Épicerie
+  - **Poiscaille** : "Poisson *" dans la grille + note `* Commande directe sur poiscaille.fr.`
+
 ## Todos en cours
 
 - [ ] Tester `bin/test_smtp` sur le serveur avec les credentials OVH de contact@kescomminges.fr
 - [ ] Mettre à jour `.env` avec la config SMTP qui fonctionne pour contact@kescomminges.fr
+- [ ] Contacter Poiscaille pour formaliser le partenariat point relais
 
 ## Tâches TODO connues (backlog projet)
 
 - [ ] Juridique : rédiger CGV B2B pour les enterprises utilisant la plateforme (distinct des CGU acheteurs)
 - [ ] Branding : remplacer couleurs dans les fichiers SCSS (`$brand-colour`, `$ofn-brand`)
 - [ ] Branding : remplacer logos dans `public/default_images/`
-- [ ] Traductions : remplacer ~40 occurrences "CoopCircuits" → "Kescomminges" dans `config/locales/fr.yml`
+- [ ] Traductions : remplacer ~40 occurrences "CoopCircuits" → "kescomminges" dans `config/locales/fr.yml`
 - [ ] Traductions : remplacer ~15 occurrences "Open Food Network"/"OFN" dans `config/locales/en_FR.yml`
 
 ## Backlog développement (future branche feature)
