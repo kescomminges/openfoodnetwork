@@ -17,3 +17,6 @@ webpack-dev-server eol=lf
 config/master.key filter=git-crypt diff=git-crypt
 config/newrelic.yml filter=git-crypt diff=git-crypt
 CLAUDE.md filter=git-crypt diff=git-crypt
+
+# git-crypt — tout le dossier Kescomminges (données privées, chiffrées)
+KESCOMMINGES/** filter=git-crypt diff=git-crypt

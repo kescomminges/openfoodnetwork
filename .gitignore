@@ -63,5 +63,5 @@ yarn-debug.log*
 .osgrep
 *.key
 
-# Dossiers projet Kescomminges (données privées, hors code)
-KESCOMMINGES/
+# Dossiers projet Kescomminges — chiffrés via git-crypt (voir .gitattributes)
+# KESCOMMINGES/ est versionné mais chiffré, ne pas l'ignorer
