@@ -48,14 +48,14 @@ footer {
         border: 1px solid rgba($dark-grey, 0.35);
         background-image: url("../images/tile-wide.png");
         background-position: center center;
-        background-color: #bbb;
+        background-color: $kesco-gris-clair;
         padding: 12px 0 8px 0;
         display: block;
 
         &, & * {
           @include csstrans;
 
-          color: #333;
+          color: $kesco-gris-fonce;
         }
 
         strong {
