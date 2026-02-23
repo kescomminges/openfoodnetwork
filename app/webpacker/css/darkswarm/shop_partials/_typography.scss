@@ -1,9 +1,9 @@
 @mixin headingFont {
-  font-family: "Oswald", sans-serif;
+  font-family: "Playfair Display", Georgia, serif;
 }
 
 // TODO should probably move that to a variables.scss
-$body-font: "Roboto", Arial, sans-serif;
+$body-font: "Lato", Arial, sans-serif;
 
 h1, h2, h3, h4, h5, h6 {
   @include headingFont;

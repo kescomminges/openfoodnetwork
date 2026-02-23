@@ -1,10 +1,10 @@
 @import "shop_partials/typography";
 
 @mixin bodyFont {
-  font-family: "Roboto", Arial, sans-serif;
+  font-family: "Lato", Arial, sans-serif;
 }
 
-$headingFont: "Oswald";
+$headingFont: "Playfair Display";
 
 body {
   @include bodyFont;

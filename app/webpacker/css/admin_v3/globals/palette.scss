@@ -1,22 +1,44 @@
-// Basic color palette for admin styles v3
+// =============================================================================
+// Palette admin — Kescomminges
+//
+// Mapping sémantique depuis variables.yml :
+//   Principal (bleu canard) : #1a5566  ← vert_principal
+//   Secondaire (orange)     : #c4723a  ← orange_secondaire
+//   Accent/danger (bordeaux): #b6244f  ← accent
+//   Surface info (lavande)  : #989fce  ← fond
+// =============================================================================
 $white: #ffffff !default; // White
-$green: #9fc820 !default; // Green
-$teal: #008397 !default; // Teal (Allports)
-$orient: #006878 !default; // Orient (Cerulean)
-$dark-blue: #004e5b !default; // Dark Blue (Sherpa)
-$pale-blue: #cee1f4; // Pale blue
-$red: #c85136 !default; // Red/Orange (Mojo)
-$bright-orange: #ffa92e; // Bright orange
-$yellow: #ff9300 !default; // Yellow
-$mystic: #d9e8eb !default; // Mystic
+
+// Principal — bleu canard (remplace teal/orient/dark-blue)
+$teal: #1a5566 !default; // Bleu canard principal (Kescomminges)
+$orient: #134455 !default; // Bleu canard foncé
+$dark-blue: #0d2e38 !default; // Bleu canard très foncé
+
+// Secondaire — orange (remplace green)
+$green: #c4723a !default; // Orange secondaire (Kescomminges)
+
+// Surfaces claires
+$pale-blue: #d4e8ef; // Bleu canard très clair
+$mystic: #e8edf7 !default; // Lavande très clair (Kescomminges fond)
+
+// Danger/erreur — bordeaux (remplace red)
+$red: #b6244f !default; // Bordeaux accent (Kescomminges)
+$roof-terracotta: #8a1a3a !default; // Bordeaux foncé
+
+// Alertes/warning — orange chaud (remplace yellow/bright-orange)
+$yellow: #d4834a !default; // Orange chaud
+$bright-orange: #d4834a; // Orange chaud (identique)
+
+// Neutre de fond clair pour les formulaires danger
+$fair-pink: #f7e8ed !default; // Rose bordeaux très clair
+
+// Gris (inchangés — rôle neutre)
 $lighter-grey: #f8f9fa !default; // Lighter grey
 $light-grey: #eff1f2 !default; // Light grey (Porcelain)
 $medium-light-grey: #babdbe !default; // Silver Sand
 $medium-grey: #919191 !default; // Medium grey
 $dark-grey: #2e3132 !default; // Dark Grey
 $near-black: #191c1d !default; // Near-black (Shark)
-$fair-pink: #ffefeb !default; // Fair Pink
-$roof-terracotta: #b83b1f !default; // Roof Terracotta
 
 // Old colour variables for backwards compatibility
 $spree-green: $green;
