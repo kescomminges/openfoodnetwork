@@ -152,11 +152,18 @@ logfile() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 confirm() {
   local prompt="${1:-Continuer ?}"
   local strict="${2:-}" # si "strict", exige de taper "oui" en entier
+  # Vérifier que stdin est un terminal interactif
+  if ! [ -t 0 ]; then
+    error "Impossible de lire la confirmation : stdin n'est pas un terminal."
+    error "Lancez ce script directement dans un terminal interactif."
+    exit 1
+  fi
+  local answer=""
   if [ -n "$strict" ]; then
-    read -r -p "$(echo -e "${YELLOW}?${NC}  $prompt [tapez 'oui' pour confirmer] ") " answer
+    read -r -p "$(echo -e "${YELLOW}?${NC}  $prompt [tapez 'oui' pour confirmer] ") " answer || true
     [ "$answer" = "oui" ]
   else
-    read -r -p "$(echo -e "${YELLOW}?${NC}  $prompt [o/N] ") " answer
+    read -r -p "$(echo -e "${YELLOW}?${NC}  $prompt [o/N] ") " answer || true
     [[ "$answer" =~ ^[oOyY]$ ]]
   fi
 }
