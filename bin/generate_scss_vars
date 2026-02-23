@@ -147,7 +147,7 @@ config = YAML.safe_load(File.read(vars_file), permitted_classes: [Symbol])
 couleurs = config["couleurs"]    || {}
 typo     = config["typographie"] || {}
 
-required_couleurs = %w[vert_principal orange_secondaire accent fond gris canard]
+required_couleurs = %w[principal secondaire troisieme gris_fonce gris_clair]
 missing = required_couleurs.reject { |k| couleurs.key?(k) }
 unless missing.empty?
   warn "[generate_scss_vars] AVERTISSEMENT : clés manquantes dans couleurs{} : #{missing.join(', ')}"
@@ -157,12 +157,11 @@ end
 # Valeurs sources avec fallbacks
 # =============================================================================
 
-principal  = couleurs["vert_principal"]    || "#1a5566"
-secondaire = couleurs["orange_secondaire"] || "#b6244f"
-accent     = couleurs["accent"]            || "#c4723a"
-fond       = couleurs["fond"]              || "#989fce"
-gris       = couleurs["gris"]             || "#1a1a1a"
-canard     = couleurs["canard"]            || "#adfcf9"
+principal  = couleurs["principal"]  || "#1a5566"
+secondaire = couleurs["secondaire"] || "#b6244f"
+troisieme  = couleurs["troisieme"]  || "#c4723a"
+gris_fonce = couleurs["gris_fonce"] || "#1a1a1a"
+gris_clair = couleurs["gris_clair"] || "#f2f2f2"
 
 font_titre = typo["font_titre"] || "'Playfair Display', Georgia, serif"
 font_corps = typo["font_corps"] || "Lato, Arial, sans-serif"
@@ -171,13 +170,13 @@ font_corps = typo["font_corps"] || "Lato, Arial, sans-serif"
 # Calcul des dérivées (remplace lighten()/darken() dans les SCSS)
 # =============================================================================
 
-# Gamme bleu canard — teal
+# Gamme bleu canard — teal (depuis principal)
 teal_300 = Color.lighten(principal, 25)
 teal_400 = Color.lighten(principal, 15)
 teal_500 = principal
 teal_600 = Color.darken(principal, 8)
 
-# Gamme orange
+# Gamme bordeaux — depuis secondaire (CTA, boutons)
 orange_400 = Color.lighten(secondaire, 12)
 orange_450 = secondaire
 orange_500 = secondaire
@@ -189,26 +188,26 @@ clr_blue_light  = Color.lighten(principal, 30)
 clr_blue_bright = Color.lighten(principal, 15)
 
 # Palette admin
-admin_orient         = Color.darken(principal, 8)
-admin_dark_blue      = Color.darken(principal, 16)
-admin_pale_blue      = Color.lighten(principal, 45)
-admin_mystic         = Color.lighten(fond, 15)
-admin_roof_terracotta = Color.darken(accent, 12)
-admin_yellow         = Color.lighten(secondaire, 8)
-admin_fair_pink      = Color.lighten(accent, 38)
+admin_orient           = Color.darken(principal, 8)
+admin_dark_blue        = Color.darken(principal, 16)
+admin_pale_blue        = Color.lighten(principal, 45)
+admin_mystic           = Color.lighten(principal, 50)   # fond lavande → teinte principal très claire
+admin_roof_terracotta  = Color.darken(secondaire, 12)
+admin_yellow           = Color.lighten(troisieme, 8)    # warning/alerte depuis troisième
+admin_fair_pink        = Color.lighten(secondaire, 38)
 admin_spree_light_blue = Color.lighten(principal, 50)
-admin_tags_bg        = Color.lighten(principal, 30)
-admin_panel_border   = principal
-admin_panel_hover    = Color.lighten(principal, 48)
-admin_panel_text     = Color.darken(principal, 20)
+admin_tags_bg          = Color.lighten(principal, 30)
+admin_panel_border     = principal
+admin_panel_hover      = Color.lighten(principal, 48)
+admin_panel_text       = Color.darken(principal, 20)
 
 # Email
 email_callout_bg = Color.lighten(principal, 52)
 
 # Checkout
 checkout_order_summary_bg = Color.lighten(principal, 48)  # fond résumé commande
-checkout_dirty_bg  = Color.lighten(accent, 32)             # fieldset en erreur (orange clair)
-checkout_valid_bg  = Color.lighten(principal, 40)          # fieldset valide (vert clair)
+checkout_dirty_bg         = Color.lighten(troisieme, 32)  # fieldset erreur (teinte troisième)
+checkout_valid_bg         = Color.lighten(principal, 40)  # fieldset valide (teinte principal)
 
 # =============================================================================
 # Génération du fichier SCSS
@@ -236,12 +235,14 @@ scss = <<~SCSS
   // Couleurs sources Kescomminges (depuis variables.yml)
   // ---------------------------------------------------------------------------
 
-  $kesco-principal:  #{principal};   // vert_principal — bleu canard
-  $kesco-secondaire: #{secondaire};  // orange_secondaire — orange terracotta
-  $kesco-accent:     #{accent};      // accent — bordeaux
-  $kesco-fond:       #{fond};        // fond — lavande
-  $kesco-gris:       #{gris};        // gris — texte courant
-  $kesco-canard:     #{canard};      // canard — décoratif
+  $kesco-principal:  #{principal};   // bleu canard — header, navigation
+  $kesco-secondaire: #{secondaire};  // bordeaux — CTA, boutons principaux
+  $kesco-troisieme:  #{troisieme};   // orange terracotta — couleur tertiaire
+  $kesco-gris-fonce: #{gris_fonce};  // texte courant, libellés
+  $kesco-gris-clair: #{gris_clair};  // fonds, surfaces neutres
+
+  // Alias rétrocompatibilité (pour les SCSS qui utilisent encore $kesco-accent)
+  $kesco-accent: $kesco-troisieme;
 
   // ---------------------------------------------------------------------------
   // Typographie Kescomminges (depuis variables.yml)
@@ -264,7 +265,7 @@ scss = <<~SCSS
   $kesco-clr-blue-bright: #{clr_blue_bright}; // lighten(principal, 15%)
 
   // ---------------------------------------------------------------------------
-  // Dérivées orange — gamme orange (remplace lighten/darken Sass)
+  // Dérivées bordeaux — gamme secondaire (remplace lighten/darken Sass)
   // ---------------------------------------------------------------------------
 
   $kesco-orange-400: #{orange_400};  // lighten(secondaire, 12%)
@@ -280,9 +281,9 @@ scss = <<~SCSS
   $kesco-admin-dark-blue:       #{admin_dark_blue};       // darken(principal, 16%)
   $kesco-admin-pale-blue:       #{admin_pale_blue};       // lighten(principal, 45%)
   $kesco-admin-mystic:          #{admin_mystic};          // lighten(fond, 15%)
-  $kesco-admin-roof-terracotta: #{admin_roof_terracotta}; // darken(accent, 12%)
-  $kesco-admin-yellow:          #{admin_yellow};          // lighten(secondaire, 8%)
-  $kesco-admin-fair-pink:       #{admin_fair_pink};       // lighten(accent, 38%)
+  $kesco-admin-roof-terracotta: #{admin_roof_terracotta}; // darken(secondaire, 12%)
+  $kesco-admin-yellow:          #{admin_yellow};          // lighten(troisieme, 8%)
+  $kesco-admin-fair-pink:       #{admin_fair_pink};       // lighten(secondaire, 38%)
   $kesco-admin-spree-light-blue: #{admin_spree_light_blue}; // lighten(principal, 50%)
   $kesco-admin-tags-bg:         #{admin_tags_bg};         // lighten(principal, 30%)
   $kesco-admin-panel-border:    #{admin_panel_border};    // = principal
@@ -312,7 +313,7 @@ File.write(out_file, scss)
 puts "[generate_scss_vars] OK — #{out_file} généré (#{scss.lines.count} lignes)"
 puts "[generate_scss_vars]   principal  : #{principal}"
 puts "[generate_scss_vars]   secondaire : #{secondaire}"
-puts "[generate_scss_vars]   accent     : #{accent}"
-puts "[generate_scss_vars]   fond       : #{fond}"
+puts "[generate_scss_vars]   troisieme  : #{troisieme}"
+puts "[generate_scss_vars]   gris_fonce : #{gris_fonce} / gris_clair : #{gris_clair}"
 puts "[generate_scss_vars]   teal-300..600 : #{teal_300} #{teal_400} #{teal_500} #{teal_600}"
-puts "[generate_scss_vars]   orange-400..600 : #{orange_400} #{orange_450} #{orange_600}"
+puts "[generate_scss_vars]   bordeaux-400..600 : #{orange_400} #{orange_450} #{orange_600}"

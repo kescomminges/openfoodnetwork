@@ -68,7 +68,7 @@ nav.top-bar {
   }
 
   li.cart {
-    background-color: $orange-450;
+    background-color: $kesco-secondaire;
 
     a span {
       color: white;
@@ -91,7 +91,7 @@ nav.top-bar {
       span {
         background-color: white;
         border-radius: 20px;
-        color: $orange-450;
+        color: $kesco-secondaire;
         font-size: 12px;
         line-height: 18px;
         position: absolute;
@@ -127,7 +127,7 @@ nav.top-bar {
       }
 
       i {
-        color: $orange-450;
+        color: $kesco-secondaire;
         display: inline-block;
         margin-right: 2px;
         margin-top: -3px;
@@ -174,7 +174,7 @@ nav.top-bar {
   z-index: 190; // Above cart sidebar and shaded overlay
 
   .cart-span {
-    background-color: $orange-450;
+    background-color: $kesco-secondaire;
     padding: 13px;
 
     a,
@@ -194,7 +194,7 @@ nav.top-bar {
       span {
         background-color: white;
         border-radius: 20px;
-        color: $orange-450;
+        color: $kesco-secondaire;
         font-size: 12px;
         line-height: 16px;
         position: absolute;

@@ -2,7 +2,7 @@
 // _kescomminges_vars.scss — Variables SCSS Kescomminges
 //
 // FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER MANUELLEMENT
-// Généré le : 2026-02-23 11:17
+// Généré le : 2026-02-23 11:39
 // Source    : KESCOMMINGES/variables.yml
 // Script    : bin/generate_scss_vars
 //
@@ -17,12 +17,14 @@
 // Couleurs sources Kescomminges (depuis variables.yml)
 // ---------------------------------------------------------------------------
 
-$kesco-principal:  #1a5566;   // vert_principal — bleu canard
-$kesco-secondaire: #b6244f;  // orange_secondaire — orange terracotta
-$kesco-accent:     #c4723a;      // accent — bordeaux
-$kesco-fond:       #989fce;        // fond — lavande
-$kesco-gris:       #1a1a1a;        // gris — texte courant
-$kesco-canard:     #adfcf9;      // canard — décoratif
+$kesco-principal:  #1a5566;   // bleu canard — header, navigation
+$kesco-secondaire: #b6244f;  // bordeaux — CTA, boutons principaux
+$kesco-troisieme:  #c4723a;   // orange terracotta — couleur tertiaire
+$kesco-gris-fonce: #1a1a1a;  // texte courant, libellés
+$kesco-gris-clair: #f2f2f2;  // fonds, surfaces neutres
+
+// Alias rétrocompatibilité (pour les SCSS qui utilisent encore $kesco-accent)
+$kesco-accent: $kesco-troisieme;
 
 // ---------------------------------------------------------------------------
 // Typographie Kescomminges (depuis variables.yml)
@@ -45,7 +47,7 @@ $kesco-clr-blue-light:  #49b2d0;  // lighten(principal, 30%)
 $kesco-clr-blue-bright: #2a88a3; // lighten(principal, 15%)
 
 // ---------------------------------------------------------------------------
-// Dérivées orange — gamme orange (remplace lighten/darken Sass)
+// Dérivées bordeaux — gamme secondaire (remplace lighten/darken Sass)
 // ---------------------------------------------------------------------------
 
 $kesco-orange-400: #d93e6c;  // lighten(secondaire, 12%)
@@ -60,10 +62,10 @@ $kesco-orange-600: #8b1c3d;  // darken(secondaire, 10%)
 $kesco-admin-orient:          #123a45;          // darken(principal, 8%)
 $kesco-admin-dark-blue:       #091f25;       // darken(principal, 16%)
 $kesco-admin-pale-blue:       #85cce0;       // lighten(principal, 45%)
-$kesco-admin-mystic:          #cccfe7;          // lighten(fond, 15%)
-$kesco-admin-roof-terracotta: #95572c; // darken(accent, 12%)
-$kesco-admin-yellow:          #d62d5f;          // lighten(secondaire, 8%)
-$kesco-admin-fair-pink:       #f1ddcf;       // lighten(accent, 38%)
+$kesco-admin-mystic:          #9ad4e5;          // lighten(fond, 15%)
+$kesco-admin-roof-terracotta: #831a39; // darken(secondaire, 12%)
+$kesco-admin-yellow:          #ce8859;          // lighten(troisieme, 8%)
+$kesco-admin-fair-pink:       #efadc0;       // lighten(secondaire, 38%)
 $kesco-admin-spree-light-blue: #9ad4e5; // lighten(principal, 50%)
 $kesco-admin-tags-bg:         #49b2d0;         // lighten(principal, 30%)
 $kesco-admin-panel-border:    #1a5566;    // = principal
