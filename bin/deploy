@@ -186,6 +186,49 @@ elapsed() {
 }
 
 # =============================================================================
+# ── LIENS SYMBOLIQUES .env → KESCOMMINGES/ ───────────────────────────────────
+# =============================================================================
+
+ensure_env_symlinks() {
+  local kescomminges_dir="$APP_DIR/KESCOMMINGES"
+
+  if [ ! -d "$kescomminges_dir" ]; then
+    error "KESCOMMINGES/ introuvable dans $APP_DIR"
+    error "Clonez-le : git clone git@github.com:kescomminges/KESCOMMINGES.git $kescomminges_dir"
+    exit 1
+  fi
+
+  # .env (prod)
+  local src_env="$kescomminges_dir/.env"
+  local dst_env="$APP_DIR/.env"
+  if [ ! -f "$src_env" ]; then
+    error "Fichier secrets introuvable : $src_env"
+    error "Copiez votre .env dans KESCOMMINGES/.env"
+    exit 1
+  fi
+  if [ -L "$dst_env" ] && [ "$(readlink "$dst_env")" = "$src_env" ]; then
+    : # symlink déjà correct
+  else
+    [ -e "$dst_env" ] && rm -f "$dst_env"
+    ln -s "$src_env" "$dst_env"
+    success "Lien créé : .env → KESCOMMINGES/.env"
+  fi
+
+  # .env.dev (dev) — optionnel
+  local src_dev="$kescomminges_dir/.env.dev"
+  local dst_dev="$APP_DIR/.env.dev"
+  if [ -f "$src_dev" ]; then
+    if [ -L "$dst_dev" ] && [ "$(readlink "$dst_dev")" = "$src_dev" ]; then
+      : # symlink déjà correct
+    else
+      [ -e "$dst_dev" ] && rm -f "$dst_dev"
+      ln -s "$src_dev" "$dst_dev"
+      success "Lien créé : .env.dev → KESCOMMINGES/.env.dev"
+    fi
+  fi
+}
+
+# =============================================================================
 # ── INITIALISATION DE L'ENVIRONNEMENT ────────────────────────────────────────
 # =============================================================================
 
@@ -221,6 +264,9 @@ init_env() {
     exit 1
   fi
   cd "$APP_DIR"
+
+  # Vérifier/créer les liens symboliques .env → KESCOMMINGES/.env
+  ensure_env_symlinks
 
   # Créer le répertoire de backup si nécessaire
   mkdir -p "$BACKUP_DIR"
@@ -275,20 +321,13 @@ preflight_checks() {
     success "Dépôt git propre"
   fi
 
-  # 5. git-crypt déverrouillé
-  if command -v git-crypt &>/dev/null; then
-    # git-crypt status --encrypted liste les fichiers chiffrés
-    # Si le dépôt est verrouillé, le .env apparaît comme "*** WARNING ***"
-    if git-crypt status 2>&1 | grep -q "not unlocked\|WARNING"; then
-      error "git-crypt non déverrouillé — les secrets sont inaccessibles"
-      echo "  → git-crypt unlock /chemin/vers/kescomminges-ofn-secrets.key"
-      failed=1
-    else
-      success "git-crypt déverrouillé"
-    fi
+  # 5. Fichier .env accessible (symlink vers KESCOMMINGES/.env)
+  if [ -f "$APP_DIR/.env" ]; then
+    success "Fichier .env accessible"
   else
-    warn "git-crypt non installé — les secrets ne sont pas chiffrés"
-    warn "Installez-le : sudo apt install git-crypt"
+    error ".env introuvable ou lien symbolique cassé"
+    echo "  → Vérifiez que KESCOMMINGES/.env existe et que le symlink est correct"
+    failed=1
   fi
 
   # 6. sudo disponible pour systemctl
@@ -638,14 +677,8 @@ cmd_update() {
 
   success "Rebase appliqué — $(git rev-list --count "$current_commit"..HEAD) commits intégrés"
 
-  # ── S'assurer que git-crypt a bien déchiffré après le rebase ────────────────
-  # (le rebase peut laisser les fichiers chiffrés si git-crypt n'a pas rejoué
-  # les filtres — un checkout forcé règle le problème)
-  if command -v git-crypt &>/dev/null; then
-    log "Rechiffrement/déchiffrement git-crypt post-rebase..."
-    git checkout HEAD -- .env 2>/dev/null || true
-    success "Fichiers secrets rafraîchis"
-  fi
+  # ── S'assurer que le symlink .env est intact après le rebase ────────────────
+  ensure_env_symlinks
 
   # ── Push sur le fork ────────────────────────────────────────────────────────
   local current_branch
