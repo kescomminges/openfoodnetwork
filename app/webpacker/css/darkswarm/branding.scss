@@ -22,9 +22,9 @@ $clr-turquoise-ultra-light: #e8f9f4;
 $clr-turquoise-bright: #23a877;
 
 // Gamme bleue — remappée vers bleu canard Kescomminges
-$clr-blue:       $kesco-principal;
-$clr-blue-light: lighten($kesco-principal, 30%);
-$clr-blue-bright: lighten($kesco-principal, 15%);
+$clr-blue:        $kesco-clr-blue;
+$clr-blue-light:  $kesco-clr-blue-light;
+$clr-blue-bright: $kesco-clr-blue-bright;
 
 $clr-yellow-light: #faf6c7;
 
@@ -61,16 +61,16 @@ $tiny-blue: #80b2e1;
 $dynamic-blue: #3d8dd1;
 
 // Gamme teal — remappée vers bleu canard Kescomminges
-$teal-300: lighten($kesco-principal, 25%);
-$teal-400: lighten($kesco-principal, 15%);
-$teal-500: $kesco-principal;
-$teal-600: darken($kesco-principal, 8%);
+$teal-300: $kesco-teal-300;
+$teal-400: $kesco-teal-400;
+$teal-500: $kesco-teal-500;
+$teal-600: $kesco-teal-600;
 
 // Gamme orange — remappée vers orange secondaire Kescomminges
-$orange-400: lighten($kesco-secondaire, 12%);
-$orange-450: $kesco-secondaire;
-$orange-500: $kesco-secondaire;
-$orange-600: darken($kesco-secondaire, 10%);
+$orange-400: $kesco-orange-400;
+$orange-450: $kesco-orange-450;
+$orange-500: $kesco-orange-500;
+$orange-600: $kesco-orange-600;
 
 $red-500: #e54e47;
 $red-700: #c1122b;

@@ -32,7 +32,7 @@ a {
 
 p.callout {
   padding: 15px;
-  background-color: lighten($kesco-principal, 52%);
+  background-color: $kesco-email-callout-bg;
   margin-bottom: 15px;
 }
 
