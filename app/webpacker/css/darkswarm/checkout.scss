@@ -1,5 +1,5 @@
 .order-summary {
-  background-color: #e1f0f5;
+  background-color: $kesco-checkout-order-summary-bg;
   padding: 1em;
   width: 100%;
   border: none;
@@ -67,11 +67,11 @@ checkout {
   }
 
   h5.dirty {
-    background: #f7ccc5;
+    background: $kesco-checkout-dirty-bg;
   }
 
   h5.valid, h5.dirty.valid {
-    background: #bfefd1;
+    background: $kesco-checkout-valid-bg;
   }
 
   orderdetails table tr th {
@@ -110,7 +110,7 @@ checkout {
 }
 
 .not-paid {
-  color: #f40f0f;
+  color: $clr-brick;
   font-weight: 700;
 }
 

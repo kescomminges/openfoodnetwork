@@ -158,8 +158,8 @@ end
 # =============================================================================
 
 principal  = couleurs["vert_principal"]    || "#1a5566"
-secondaire = couleurs["orange_secondaire"] || "#c4723a"
-accent     = couleurs["accent"]            || "#b6244f"
+secondaire = couleurs["orange_secondaire"] || "#b6244f"
+accent     = couleurs["accent"]            || "#c4723a"
 fond       = couleurs["fond"]              || "#989fce"
 gris       = couleurs["gris"]             || "#1a1a1a"
 canard     = couleurs["canard"]            || "#adfcf9"
@@ -204,6 +204,11 @@ admin_panel_text     = Color.darken(principal, 20)
 
 # Email
 email_callout_bg = Color.lighten(principal, 52)
+
+# Checkout
+checkout_order_summary_bg = Color.lighten(principal, 48)  # fond résumé commande
+checkout_dirty_bg  = Color.lighten(accent, 32)             # fieldset en erreur (orange clair)
+checkout_valid_bg  = Color.lighten(principal, 40)          # fieldset valide (vert clair)
 
 # =============================================================================
 # Génération du fichier SCSS
@@ -289,6 +294,14 @@ scss = <<~SCSS
   // ---------------------------------------------------------------------------
 
   $kesco-email-callout-bg: #{email_callout_bg}; // lighten(principal, 52%)
+
+  // ---------------------------------------------------------------------------
+  // Dérivées checkout
+  // ---------------------------------------------------------------------------
+
+  $kesco-checkout-order-summary-bg: #{checkout_order_summary_bg}; // lighten(principal, 48%)
+  $kesco-checkout-dirty-bg:         #{checkout_dirty_bg};          // lighten(accent, 32%) — fieldset erreur
+  $kesco-checkout-valid-bg:         #{checkout_valid_bg};          // lighten(principal, 40%) — fieldset valide
 SCSS
 
 # =============================================================================
