@@ -9,14 +9,5 @@
 pre-commit eol=lf
 webpack-dev-server eol=lf
 
-# git-crypt — fichiers chiffrés dans le dépôt (illisibles sans la clé)
-# Initialiser avec : git-crypt init && git-crypt export-key ~/kescomminges-ofn-secrets.key
-# Déverrouiller avec : git-crypt unlock ~/kescomminges-ofn-secrets.key
-# Note : .env et .env.dev ne sont plus dans git — ils vivent dans KESCOMMINGES/
-#        et sont liés symboliquement par bin/deploy (cf. KESCOMMINGES/.env)
-config/master.key filter=git-crypt diff=git-crypt
-config/newrelic.yml filter=git-crypt diff=git-crypt
-CLAUDE.md filter=git-crypt diff=git-crypt
-
-# git-crypt — tout le dossier Kescomminges (données privées, chiffrées)
-KESCOMMINGES/** filter=git-crypt diff=git-crypt
+# Secrets : config/master.key et config/newrelic.yml vivent dans KESCOMMINGES/
+# et sont liés symboliquement par bin/deploy. Ils ne sont pas versionnés ici.

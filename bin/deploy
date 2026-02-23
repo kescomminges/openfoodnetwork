@@ -226,6 +226,32 @@ ensure_env_symlinks() {
       success "Lien créé : .env.dev → KESCOMMINGES/.env.dev"
     fi
   fi
+
+  # config/master.key — optionnel (peut ne pas exister sur toutes les instances)
+  local src_key="$kescomminges_dir/master.key"
+  local dst_key="$APP_DIR/config/master.key"
+  if [ -f "$src_key" ]; then
+    if [ -L "$dst_key" ] && [ "$(readlink "$dst_key")" = "$src_key" ]; then
+      : # symlink déjà correct
+    else
+      [ -e "$dst_key" ] && rm -f "$dst_key"
+      ln -s "$src_key" "$dst_key"
+      success "Lien créé : config/master.key → KESCOMMINGES/master.key"
+    fi
+  fi
+
+  # config/newrelic.yml — optionnel
+  local src_nr="$kescomminges_dir/newrelic.yml"
+  local dst_nr="$APP_DIR/config/newrelic.yml"
+  if [ -f "$src_nr" ]; then
+    if [ -L "$dst_nr" ] && [ "$(readlink "$dst_nr")" = "$src_nr" ]; then
+      : # symlink déjà correct
+    else
+      [ -e "$dst_nr" ] && rm -f "$dst_nr"
+      ln -s "$src_nr" "$dst_nr"
+      success "Lien créé : config/newrelic.yml → KESCOMMINGES/newrelic.yml"
+    fi
+  fi
 }
 
 # =============================================================================
