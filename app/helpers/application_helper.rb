@@ -77,6 +77,22 @@ module ApplicationHelper
     Array.wrap(key) + ["v3", locale.to_s, I18nDigests.for_locale(locale)]
   end
 
+  # Injecte un SVG depuis app/webpacker/images/ en ligne (inline),
+  # ce qui permet de contrôler sa couleur via CSS (currentColor / color:).
+  # Usage : = inline_svg_pack_tag("menu/icn-profile.svg", class: "my-icon")
+  def inline_svg_pack_tag(path, html_options = {})
+    svg_path = Rails.root.join("app", "webpacker", "images", path)
+    return "" unless svg_path.exist?
+
+    svg_content = svg_path.read
+    # Injecter les attributs HTML supplémentaires sur la balise <svg>
+    if html_options.present?
+      attrs = html_options.map { |k, v| "#{k}=\"#{v}\"" }.join(" ")
+      svg_content = svg_content.sub(/<svg/, "<svg #{attrs}")
+    end
+    svg_content.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
   def pdf_stylesheet_pack_tag(source)
     # With shakapacker dev server running, the wicked_pdf_stylesheet_pack_tag will produce a
     # relative path, because we don't have `config.action_controller.asset_host`. Relative path
