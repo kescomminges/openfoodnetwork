@@ -45,17 +45,17 @@ footer {
         @include csstrans;
 
         width: 100%;
-        border: 1px solid rgba($kesco-gris-fonce, 0.35);
+        border: 1px solid rgba($kesco-secondaire, 0.35);
         background-image: url("../images/tile-wide.png");
         background-position: center center;
-        background-color: $kesco-gris-clair;
+        background-color: $kesco-secondaire;
         padding: 12px 0 8px 0;
         display: block;
 
         &, & * {
           @include csstrans;
 
-          color: $kesco-gris-fonce;
+          color: white;
         }
 
         strong {
@@ -67,7 +67,7 @@ footer {
           border-color: white;
 
           &, & * {
-            color: rgba(white, 1);
+            color: rgba(white, 0.8);
           }
         }
       }
