@@ -11,6 +11,9 @@
 
 $brand-colour: $kesco-principal; // Kescomminges — depuis _kescomminges_vars.scss
 
+// Foundation primary-color — pilote la couleur des boutons et leur hover (darken 10%)
+$primary-color: $kesco-secondaire !default;
+
 // Topbar
 $topbar-height: rem-calc(64);
 $topbar-link-padding: $topbar-height * 0.25;
