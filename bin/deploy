@@ -524,7 +524,7 @@ cmd_update() {
   git log HEAD.."$target_ref" \
     --oneline \
     --color=always \
-    | head -30
+    --max-count=30
   if [ "$commit_count" -gt 30 ]; then
     echo "  ... et $(( commit_count - 30 )) autres commits"
   fi
@@ -585,7 +585,7 @@ cmd_update() {
   )
   local touched_custom=""
   for f in "${custom_files[@]}"; do
-    if git diff --name-only HEAD.."$target_ref" | grep -qx "$f"; then
+    if git diff --name-only HEAD.."$target_ref" 2>/dev/null | grep -qx "$f"; then
       touched_custom="$touched_custom\n  ⚠  $f"
     fi
   done
