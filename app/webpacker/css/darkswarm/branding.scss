@@ -9,17 +9,17 @@ $ofn-grey: #808184;
 
 // old colors:
 
-$clr-brick: #c1122b;
-$clr-brick-light: #f5e6e7;
-$clr-brick-light-trans: rgba(245, 230, 231, 0.9);
-$clr-brick-bright: #eb4c46;
-$clr-brick-med-bright: #e5a2a0;
-$clr-brick-light-bright: #f5c4c9;
+$clr-brick: $kesco-troisieme; // Kescomminges — orange terracotta
+$clr-brick-light: mix(white, $kesco-troisieme, 85%);
+$clr-brick-light-trans: rgba(mix(white, $kesco-troisieme, 85%), 0.9);
+$clr-brick-bright: mix(white, $kesco-troisieme, 30%);
+$clr-brick-med-bright: mix(white, $kesco-troisieme, 55%);
+$clr-brick-light-bright: mix(white, $kesco-troisieme, 70%);
 
-$clr-turquoise: #0b8c61;
-$clr-turquoise-light: #ceefe4;
-$clr-turquoise-ultra-light: #e8f9f4;
-$clr-turquoise-bright: #23a877;
+$clr-turquoise: $kesco-principal; // Kescomminges — bleu canard
+$clr-turquoise-light: mix(white, $kesco-principal, 80%);
+$clr-turquoise-ultra-light: mix(white, $kesco-principal, 92%);
+$clr-turquoise-bright: mix(white, $kesco-principal, 40%);
 
 // Gamme bleue — remappée vers bleu canard Kescomminges
 $clr-blue:        $kesco-clr-blue;
@@ -72,8 +72,8 @@ $orange-450: $kesco-orange-450;
 $orange-500: $kesco-orange-500;
 $orange-600: $kesco-orange-600;
 
-$red-500: #e54e47;
-$red-700: #c1122b;
+$red-500: mix(white, $kesco-troisieme, 30%);
+$red-700: $kesco-troisieme;
 
 $social-facebook: #3b5998;
 $social-instagram: #e1306c;
