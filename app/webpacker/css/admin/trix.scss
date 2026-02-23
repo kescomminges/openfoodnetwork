@@ -15,7 +15,7 @@ trix-editor {
   color: #222;
 
   a {
-    color: #f27052;
+    color: $ofn-brand;
   }
 
   @include trix-styles;

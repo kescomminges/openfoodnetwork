@@ -782,6 +782,20 @@ cmd_deploy() {
   fi
   echo ""
 
+  # ── Génération variables SCSS depuis variables.yml ───────────────────────────
+  header "Génération des variables SCSS Kescomminges"
+  if [[ -f "$APP_DIR/KESCOMMINGES/variables.yml" ]]; then
+    if ruby "$APP_DIR/bin/generate_scss_vars"; then
+      success "Variables SCSS générées depuis KESCOMMINGES/variables.yml"
+    else
+      warn "generate_scss_vars a échoué — utilisation du fichier existant _kescomminges_vars.scss"
+    fi
+  else
+    warn "KESCOMMINGES/variables.yml introuvable — utilisation du fichier existant _kescomminges_vars.scss"
+    warn "  (cloner github.com/kescomminges/KESCOMMINGES dans $APP_DIR/KESCOMMINGES pour activer)"
+  fi
+  echo ""
+
   # ── Assets precompile ────────────────────────────────────────────────────────
   header "Compilation des assets (assets:precompile)"
   start=$(date +%s)
@@ -881,6 +895,7 @@ _do_rollback() {
   git reset --hard "$rollback_commit"
 
   # Rollback des assets
+  ruby "$APP_DIR/bin/generate_scss_vars" 2>/dev/null || true
   bundle exec rails assets:precompile RAILS_ENV="$RAILS_ENV" --quiet 2>/dev/null || true
 
   # Restart services

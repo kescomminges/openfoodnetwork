@@ -9,7 +9,7 @@
 // Scandanavia: #0c8bbc
 // UK: #e6373f
 
-$brand-colour: #1a5566; // Kescomminges — bleu canard principal
+$brand-colour: $kesco-principal; // Kescomminges — depuis _kescomminges_vars.scss
 
 // Topbar
 $topbar-height: rem-calc(64);

@@ -76,11 +76,11 @@
 }
 
 button.success, .button.success {
-  background: #0096ad;
+  background: $teal-500;
 }
 
 .button.success:hover, .button.success:active, .button.success:focus, button.success:hover, button.success:active, button.success:focus {
-  background: #14b6cc;
+  background: $clr-blue-bright;
 }
 
 .button.help-btn {

@@ -14,7 +14,7 @@ tbody.panel-ctrl {
           background-color: #c1c1c1;
         }
         &.saving {
-          background-color: #ff9848;
+          background-color: $yellow;
           i.icon-refresh {
             -webkit-animation: spin 2s infinite linear;
             animation: spin 2s infinite linear;

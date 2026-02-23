@@ -1,0 +1,49 @@
+// =============================================================================
+// _kescomminges_vars.scss — Variables SCSS Kescomminges
+//
+// FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER MANUELLEMENT
+// Généré le : 2026-02-23 10:33
+// Source    : KESCOMMINGES/variables.yml
+// Script    : bin/generate_scss_vars
+//
+// Pour mettre à jour : modifier variables.yml puis relancer bin/generate_scss_vars
+// (ou lancer bin/deploy qui le fait automatiquement)
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Couleurs Kescomminges
+// ---------------------------------------------------------------------------
+
+/// Couleur principale — bleu canard foncé
+/// Utilisée pour : header, navigation, couleur de marque
+$kesco-principal:   #1a5566;
+
+/// Couleur secondaire — orange terracotta
+/// Utilisée pour : CTA, boutons principaux, accents
+$kesco-secondaire:  #c4723a;
+
+/// Couleur accent — bordeaux
+/// Utilisée pour : erreurs, danger, bordures d'alerte
+$kesco-accent:      #b6244f;
+
+/// Couleur fond — lavande
+/// Utilisée pour : surfaces info, arrière-plans doux
+$kesco-fond:        #989fce;
+
+/// Couleur gris texte — quasi-noir
+/// Utilisée pour : texte courant, libellés
+$kesco-gris:        #1a1a1a;
+
+/// Couleur canard — décoratif
+/// Utilisée pour : badges, highlights décoratifs
+$kesco-canard:      #adfcf9;
+
+// ---------------------------------------------------------------------------
+// Typographie Kescomminges
+// ---------------------------------------------------------------------------
+
+/// Police des titres (h1–h6)
+$kesco-font-titre:  'URW Bookman', Georgia, serif;
+
+/// Police du corps de texte
+$kesco-font-corps:  Lato, Arial, sans-serif;

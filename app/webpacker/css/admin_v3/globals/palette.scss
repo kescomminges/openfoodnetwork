@@ -1,36 +1,48 @@
 // =============================================================================
 // Palette admin — Kescomminges
 //
-// Mapping sémantique depuis variables.yml :
-//   Principal (bleu canard) : #1a5566  ← vert_principal
-//   Secondaire (orange)     : #c4723a  ← orange_secondaire
-//   Accent/danger (bordeaux): #b6244f  ← accent
-//   Surface info (lavande)  : #989fce  ← fond
+// Toutes les couleurs sont dérivées de $kesco-* (depuis _kescomminges_vars.scss,
+// auto-généré depuis KESCOMMINGES/variables.yml via bin/generate_scss_vars).
+//
+// Mapping sémantique :
+//   Principal (bleu canard) : $kesco-principal    ← vert_principal
+//   Secondaire (orange)     : $kesco-secondaire   ← orange_secondaire
+//   Accent/danger (bordeaux): $kesco-accent       ← accent
+//   Surface info (lavande)  : $kesco-fond         ← fond
 // =============================================================================
+
 $white: #ffffff !default; // White
 
 // Principal — bleu canard (remplace teal/orient/dark-blue)
-$teal: #1a5566 !default; // Bleu canard principal (Kescomminges)
-$orient: #134455 !default; // Bleu canard foncé
-$dark-blue: #0d2e38 !default; // Bleu canard très foncé
+$teal: $kesco-principal !default; // Bleu canard principal
+$orient: darken($kesco-principal, 8%) !default; // Bleu canard foncé
+$dark-blue: darken($kesco-principal, 16%) !default; // Bleu canard très foncé
 
 // Secondaire — orange (remplace green)
-$green: #c4723a !default; // Orange secondaire (Kescomminges)
+$green: $kesco-secondaire !default; // Orange secondaire (CTA, succès)
 
-// Surfaces claires
-$pale-blue: #d4e8ef; // Bleu canard très clair
-$mystic: #e8edf7 !default; // Lavande très clair (Kescomminges fond)
+// Surfaces claires dérivées du principal
+$pale-blue: lighten($kesco-principal, 45%); // Bleu canard très clair
+$mystic: lighten($kesco-fond, 15%) !default; // Lavande très clair
 
 // Danger/erreur — bordeaux (remplace red)
-$red: #b6244f !default; // Bordeaux accent (Kescomminges)
-$roof-terracotta: #8a1a3a !default; // Bordeaux foncé
+$red: $kesco-accent !default; // Bordeaux accent
+$roof-terracotta: darken($kesco-accent, 12%) !default; // Bordeaux foncé
 
-// Alertes/warning — orange chaud (remplace yellow/bright-orange)
-$yellow: #d4834a !default; // Orange chaud
-$bright-orange: #d4834a; // Orange chaud (identique)
+// Alertes/warning — orange chaud dérivé du secondaire (remplace yellow/bright-orange)
+$yellow: lighten($kesco-secondaire, 8%) !default; // Orange chaud (warning)
+$bright-orange: lighten($kesco-secondaire, 8%); // Orange chaud (identique)
+
+// Tags admin — bleu canard clair dérivé
+$admin-tags-bg: lighten($kesco-principal, 30%); // Fond tags/étiquettes
+
+// Panels admin — variantes dérivées du principal
+$admin-panel-border: $kesco-principal; // Bordure panels expanded
+$admin-panel-hover: lighten($kesco-principal, 48%); // Fond hover ligne panel
+$admin-panel-text: darken($kesco-principal, 20%); // Texte sélectionné panel
 
 // Neutre de fond clair pour les formulaires danger
-$fair-pink: #f7e8ed !default; // Rose bordeaux très clair
+$fair-pink: lighten($kesco-accent, 38%) !default; // Rose bordeaux très clair
 
 // Gris (inchangés — rôle neutre)
 $lighter-grey: #f8f9fa !default; // Lighter grey
@@ -43,7 +55,7 @@ $near-black: #191c1d !default; // Near-black (Shark)
 // Old colour variables for backwards compatibility
 $spree-green: $green;
 $spree-blue: $teal;
-$spree-light-blue: #eff5fc;
+$spree-light-blue: lighten($kesco-principal, 50%);
 $color-1: $white;
 $color-2: $green;
 $color-3: $teal;

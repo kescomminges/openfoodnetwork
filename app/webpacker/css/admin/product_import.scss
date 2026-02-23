@@ -17,7 +17,7 @@ div.panel-section {
     color: $pi-green;
   }
   .info {
-    color: #68b7c0;
+    color: $teal-400;
   }
 
   div.panel-header {
@@ -79,7 +79,7 @@ div.panel-section {
     div.table-wrap {
       width: 100%;
       overflow: auto;
-      border-right: 1px solid #ceede3;
+      border-right: 1px solid $pale-blue;
       max-height: 23em;
     }
 

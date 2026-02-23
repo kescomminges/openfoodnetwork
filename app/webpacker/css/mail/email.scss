@@ -1,3 +1,6 @@
+// Variables Kescomminges — auto-généré depuis KESCOMMINGES/variables.yml
+@import "../darkswarm/kescomminges_vars";
+
 /* -------------------------------------
  *		GLOBAL
  *------------------------------------- */
@@ -24,18 +27,18 @@ body {
  *------------------------------------- */
 
 a {
-  color: #0096ad;
+  color: $kesco-principal;
 }
 
 p.callout {
   padding: 15px;
-  background-color: #e1f0f5;
+  background-color: lighten($kesco-principal, 52%);
   margin-bottom: 15px;
 }
 
 .callout a {
   font-weight: bold;
-  color: #0096ad;
+  color: $kesco-principal;
 }
 
 p.notice {

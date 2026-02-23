@@ -43,7 +43,7 @@ tbody.panel-ctrl {
 
       i.warning::before {
         content: "\f071";
-        color: #ff9848;
+        color: $yellow;
       }
 
       i.ok::before {
@@ -54,9 +54,9 @@ tbody.panel-ctrl {
 
     &:hover {
       cursor: pointer;
-      background-color: #d0e2f6;
+      background-color: $admin-panel-hover;
       * {
-        color: #1b3c56;
+        color: $admin-panel-text;
       }
 
       i.icon-status::before {
@@ -68,13 +68,13 @@ tbody.panel-ctrl {
   &.expanded {
     > tr:not(.panel-row) {
       > td {
-        border-bottom: 1px solid #6788a2;
+        border-bottom: 1px solid $admin-panel-border;
 
         &.selected {
           background-color: #ffffff;
-          border-left: 1px solid #6788a2;
-          border-right: 1px solid #6788a2;
-          border-top: 1px solid #6788a2;
+          border-left: 1px solid $admin-panel-border;
+          border-right: 1px solid $admin-panel-border;
+          border-top: 1px solid $admin-panel-border;
           border-bottom: none;
 
           &:hover {
@@ -82,7 +82,7 @@ tbody.panel-ctrl {
           }
 
           * {
-            color: #1b3c56;
+            color: $admin-panel-text;
           }
 
           i.icon-status::before {
@@ -105,7 +105,7 @@ tbody.panel-ctrl {
     }
 
     > td {
-      border-color: #6788a2;
+      border-color: $admin-panel-border;
       padding: 0;
       .panel {
         .actions {

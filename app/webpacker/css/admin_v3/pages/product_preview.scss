@@ -1,3 +1,4 @@
+@import "../../darkswarm/kescomminges_vars";
 @import "../../darkswarm/branding";
 @import "../../darkswarm/mixins";
 
@@ -74,8 +75,8 @@
     display: inline-block;
     padding: 1rem 2rem 1.0625rem 2rem;
     font-size: 1rem;
-    background-color: #008cba;
-    border-color: #007095;
+    background-color: $teal-500;
+    border-color: $teal-600;
     color: #ffffff;
     transition: background-color 300ms ease-out;
   }

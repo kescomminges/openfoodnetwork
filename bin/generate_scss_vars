@@ -1,0 +1,145 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# =============================================================================
+# bin/generate_scss_vars — Génère _kescomminges_vars.scss depuis variables.yml
+#
+# Usage:
+#   ruby bin/generate_scss_vars
+#   ruby bin/generate_scss_vars --vars-file /chemin/vers/variables.yml
+#   ruby bin/generate_scss_vars --out /chemin/vers/_kescomminges_vars.scss
+#
+# Appelé automatiquement par bin/deploy avant assets:precompile.
+# Peut aussi être lancé manuellement en dev après modification de variables.yml.
+# =============================================================================
+
+require "yaml"
+require "date"
+
+# --- Chemins par défaut (relatifs à la racine du dépôt) --------------------
+
+SCRIPT_DIR  = File.expand_path("..", __FILE__)
+REPO_ROOT   = File.expand_path("..", SCRIPT_DIR)
+
+DEFAULT_VARS_FILE = File.join(REPO_ROOT, "KESCOMMINGES", "variables.yml")
+DEFAULT_OUT_FILE  = File.join(
+  REPO_ROOT,
+  "app", "webpacker", "css", "darkswarm", "_kescomminges_vars.scss"
+)
+
+# --- Parsing des arguments --------------------------------------------------
+
+vars_file = DEFAULT_VARS_FILE
+out_file  = DEFAULT_OUT_FILE
+
+i = 0
+while i < ARGV.length
+  case ARGV[i]
+  when "--vars-file"
+    vars_file = ARGV[i + 1]
+    i += 2
+  when "--out"
+    out_file = ARGV[i + 1]
+    i += 2
+  else
+    i += 1
+  end
+end
+
+# --- Lecture de variables.yml -----------------------------------------------
+
+unless File.exist?(vars_file)
+  warn "[generate_scss_vars] ERREUR : fichier variables.yml introuvable : #{vars_file}"
+  warn "[generate_scss_vars] Conseil : cloner le dépôt KESCOMMINGES dans #{File.dirname(vars_file)}"
+  exit 1
+end
+
+config = YAML.safe_load(File.read(vars_file), permitted_classes: [Symbol])
+
+couleurs   = config["couleurs"]   || {}
+typo       = config["typographie"] || {}
+
+# --- Validation basique -----------------------------------------------------
+
+required_couleurs = %w[vert_principal orange_secondaire accent fond gris canard]
+missing = required_couleurs.reject { |k| couleurs.key?(k) }
+unless missing.empty?
+  warn "[generate_scss_vars] AVERTISSEMENT : clés manquantes dans couleurs{} : #{missing.join(', ')}"
+end
+
+# --- Valeurs avec fallbacks -------------------------------------------------
+
+principal   = couleurs["vert_principal"]    || "#1a5566"
+secondaire  = couleurs["orange_secondaire"] || "#c4723a"
+accent      = couleurs["accent"]            || "#b6244f"
+fond        = couleurs["fond"]              || "#989fce"
+gris        = couleurs["gris"]              || "#1a1a1a"
+canard      = couleurs["canard"]            || "#adfcf9"
+
+font_titre  = typo["font_titre"] || "'Playfair Display', Georgia, serif"
+font_corps  = typo["font_corps"] || "Lato, Arial, sans-serif"
+
+# --- Génération du fichier SCSS ---------------------------------------------
+
+timestamp = DateTime.now.strftime("%Y-%m-%d %H:%M")
+
+scss = <<~SCSS
+  // =============================================================================
+  // _kescomminges_vars.scss — Variables SCSS Kescomminges
+  //
+  // FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER MANUELLEMENT
+  // Généré le : #{timestamp}
+  // Source    : KESCOMMINGES/variables.yml
+  // Script    : bin/generate_scss_vars
+  //
+  // Pour mettre à jour : modifier variables.yml puis relancer bin/generate_scss_vars
+  // (ou lancer bin/deploy qui le fait automatiquement)
+  // =============================================================================
+
+  // ---------------------------------------------------------------------------
+  // Couleurs Kescomminges
+  // ---------------------------------------------------------------------------
+
+  /// Couleur principale — bleu canard foncé
+  /// Utilisée pour : header, navigation, couleur de marque
+  $kesco-principal:   #{principal};
+
+  /// Couleur secondaire — orange terracotta
+  /// Utilisée pour : CTA, boutons principaux, accents
+  $kesco-secondaire:  #{secondaire};
+
+  /// Couleur accent — bordeaux
+  /// Utilisée pour : erreurs, danger, bordures d'alerte
+  $kesco-accent:      #{accent};
+
+  /// Couleur fond — lavande
+  /// Utilisée pour : surfaces info, arrière-plans doux
+  $kesco-fond:        #{fond};
+
+  /// Couleur gris texte — quasi-noir
+  /// Utilisée pour : texte courant, libellés
+  $kesco-gris:        #{gris};
+
+  /// Couleur canard — décoratif
+  /// Utilisée pour : badges, highlights décoratifs
+  $kesco-canard:      #{canard};
+
+  // ---------------------------------------------------------------------------
+  // Typographie Kescomminges
+  // ---------------------------------------------------------------------------
+
+  /// Police des titres (h1–h6)
+  $kesco-font-titre:  #{font_titre};
+
+  /// Police du corps de texte
+  $kesco-font-corps:  #{font_corps};
+SCSS
+
+# --- Écriture du fichier ----------------------------------------------------
+
+File.write(out_file, scss)
+puts "[generate_scss_vars] OK — #{out_file} généré (#{scss.lines.count} lignes)"
+puts "[generate_scss_vars]   principal  : #{principal}"
+puts "[generate_scss_vars]   secondaire : #{secondaire}"
+puts "[generate_scss_vars]   accent     : #{accent}"
+puts "[generate_scss_vars]   fond       : #{fond}"
