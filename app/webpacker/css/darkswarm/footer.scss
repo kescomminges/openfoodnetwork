@@ -45,7 +45,7 @@ footer {
         @include csstrans;
 
         width: 100%;
-        border: 1px solid rgba($dark-grey, 0.35);
+        border: 1px solid rgba($kesco-gris-fonce, 0.35);
         background-image: url("../images/tile-wide.png");
         background-position: center center;
         background-color: $kesco-gris-clair;
@@ -81,7 +81,7 @@ footer {
   }
 
   .footer-local {
-    background: lighten($dark-grey, 3%);
+    background: $kesco-gris-fonce;
 
     @include panepadding;
 
@@ -122,7 +122,7 @@ footer {
             text-decoration: none;
 
             i {
-              color: lighten($dark-grey, 60%);
+              color: lighten($kesco-gris-fonce, 60%);
               text-shadow: 2px 2px 0 black;
             }
           }
