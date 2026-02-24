@@ -1,6 +1,6 @@
 # Session — kescomminges.fr OFN
 
-_Dernière mise à jour : 2026-02-22_
+_Dernière mise à jour : 2026-02-24_
 
 ## Résumé des échanges récents
 
@@ -66,6 +66,28 @@ _Dernière mise à jour : 2026-02-22_
   - Paiement comptant à la livraison (au lieu de "paiement sécurisé en ligne")
   - Produits simplifiés : Viandes, Fromages, Fruits & légumes, Boissons, Épicerie
   - **Poiscaille** : "Poisson *" dans la grille + note `* Commande directe sur poiscaille.fr.`
+
+### 2026-02-24 — Session 7
+
+- **Prod bloquée après git pull** : branches divergées sur master
+  - Cause : `git pull` sans stratégie définie → `fatal: Need to specify how to reconcile divergent branches`
+  - Fix : `git reset --hard origin/kesco_custom1` sur la prod
+
+- **Rebase interrompu sur la prod** : état `interactive rebase in progress`
+  - Fix : `git rebase --abort` puis `git checkout kesco_custom1`
+
+- **KESCOMMINGES/.env avec nouveaux mots de passe** non pushé
+  - Pull rebase + push depuis la machine locale → résolu
+
+- **`.env.dev` bloquait systématiquement les rebases**
+  - Cause : commit `0bac58a9cf` versionnait `.env.dev` (chiffré git-crypt), mais le fichier existait déjà comme symlink non tracké sur le serveur
+  - Solution : `git filter-repo --path .env.dev --invert-paths --refs kesco_custom1 --force`
+  - `.env.dev` retiré de tout l'historique de `kesco_custom1` en une passe
+  - Force-push sur `origin/kesco_custom1`
+  - Confirmé : le contenu était chiffré git-crypt (binaire illisible), aucun secret en clair dans l'historique
+
+- **`./bin/deploy update --env dev`** : rebase sur `v5.4.3` réussi après reset --hard sur la prod
+- **Les deux instances** (prod + dev) opérationnelles et à jour
 
 ## Todos en cours
 

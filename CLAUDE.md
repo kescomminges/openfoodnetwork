@@ -177,6 +177,29 @@ Toute modification du code source **doit être publiée** (rendu public sur le f
 Les personnalisations via variables d'environnement et interface admin ne sont pas du code source
 et n'ont pas d'obligation de publication.
 
+### Retirer un fichier de tout l'historique git
+
+Si un fichier ne doit plus apparaître dans aucun commit (ex. `.env.dev` qui bloquait les rebases) :
+
+```bash
+git filter-repo --path .env.dev --invert-paths --refs kesco_custom1 --force
+git push origin kesco_custom1 --force-with-lease
+```
+
+Ensuite sur chaque serveur qui a une copie :
+```bash
+git fetch origin
+git reset --hard origin/kesco_custom1
+```
+
+### Si la prod est bloquée sur un rebase interrompu
+
+```bash
+git rebase --abort
+git checkout kesco_custom1
+git reset --hard origin/kesco_custom1
+```
+
 ---
 
 ## Branding Kescomminges
