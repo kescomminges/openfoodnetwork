@@ -1,6 +1,6 @@
 # Session — kescomminges.fr OFN
 
-_Dernière mise à jour : 2026-02-24_
+_Dernière mise à jour : 2026-02-25_
 
 ## Résumé des échanges récents
 
@@ -88,6 +88,14 @@ _Dernière mise à jour : 2026-02-24_
 
 - **`./bin/deploy update --env dev`** : rebase sur `v5.4.3` réussi après reset --hard sur la prod
 - **Les deux instances** (prod + dev) opérationnelles et à jour
+
+### 2026-02-25 — Session 8
+
+- **GitHub Actions désactivées** sur le fork kescomminges
+  - Les builds échouaient (secrets CI manquants : `KNAPSACK_PRO_TEST_SUITE_TOKEN` etc.)
+  - Pas critique pour une instance perso sans CI collaborative
+  - Solution : suppression des 5 fichiers `.github/workflows/` (build, linters, stage, auto-author-assign, move-dependency-pr)
+  - Commit : `c10bf7163c`
 
 ## Todos en cours
 

@@ -171,6 +171,19 @@ git rebase upstream/master
 git push origin master --force-with-lease
 ```
 
+### GitHub Actions
+
+Les workflows CI upstream (`.github/workflows/`) ont été **supprimés** du fork kescomminges.
+Ils nécessitent des secrets (`KNAPSACK_PRO_TEST_SUITE_TOKEN`, etc.) non configurés sur un fork perso
+et ne sont pas utiles sans CI collaborative.
+
+Si une future mise à jour upstream recrée ces fichiers via rebase, les supprimer à nouveau :
+```bash
+rm .github/workflows/build.yml .github/workflows/linters.yml .github/workflows/stage.yml \
+   .github/workflows/auto-author-assign.yml .github/workflows/move-dependency-pr-to-code-review.yml
+git add -A && git commit -m "ci: désactiver GitHub Actions (fork perso)"
+```
+
 ### Règle AGPL importante
 
 Toute modification du code source **doit être publiée** (rendu public sur le fork GitHub).
