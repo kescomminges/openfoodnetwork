@@ -61,3 +61,5 @@ yarn-debug.log*
 /config/master.key
 .secrets
 KESCOMMINGES/
+.osgrep/
+.env.dev
