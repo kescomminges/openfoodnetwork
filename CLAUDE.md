@@ -275,8 +275,8 @@ Une fois l'instance lancée, configurer dans l'admin :
 Variables d'environnement à définir pour la France :
 
 ```bash
-SITE_NAME="Kescomminges"
-SITE_URL="kescomminges.fr"
+SITE_NAME="kesco.fr"
+SITE_URL="kesco.fr"
 TIMEZONE="Paris"
 DEFAULT_COUNTRY_CODE="FR"
 LOCALE="fr"
@@ -285,8 +285,8 @@ CURRENCY="EUR"
 CHECKOUT_ZONE="France"   # ou "European Union" selon la config TVA
 
 MAIL_HOST="..."
-MAIL_DOMAIN="kescomminges.fr"
-MAILS_FROM="hello@kescomminges.fr"
+MAIL_DOMAIN="kesco.fr"
+MAILS_FROM="contact@kesco.fr"
 
 # Stripe (si activé)
 # STRIPE_INSTANCE_SECRET_KEY=...
