@@ -191,10 +191,10 @@ begin
   puts "✓ Mail envoyé avec succès à #{options[:to]}"
   puts "  Vérifiez votre boîte (et les spams)."
 
-rescue Net::SMTP::FatalError => e
+rescue Net::SMTPFatalError => e
   puts "✗ Erreur SMTP fatale : #{e.message}"
   puts "  → Vérifiez l'adresse From, le compte SMTP, ou les restrictions d'envoi OVH"
-rescue Net::SMTP::Error => e
+rescue Net::SMTPError => e
   puts "✗ Erreur SMTP : #{e.message}"
 rescue Net::OpenTimeout, Errno::ECONNREFUSED => e
   puts "✗ Connexion impossible : #{e.message}"
