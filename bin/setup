@@ -1,55 +1,60 @@
-#!/usr/bin/env ruby
-#
-# Install dependencies and migrate data during production deployments or
-# when updating your development environment.
-#
-# Take care when changing it and consider the ofn-install repository for
-# the context of deployments.
-require "fileutils"
+#!/usr/bin/env bash
+# =============================================================================
+# bin/setup — Configuration initiale après un clone de kesco_custom2
+# =============================================================================
 
-# path to your application root.
-APP_ROOT = File.expand_path("..", __dir__)
+set -euo pipefail
 
-BUNDLE_ENV = { "BUNDLE_SUPPRESS_INSTALL_USING_MESSAGES"=> "true" }
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_DIR="$(dirname "$SCRIPT_DIR")"
 
-def system!(*args)
-  system(*args) || abort("\n== Command #{args} failed ==")
-end
+echo "📦 Initialisation de l'instance Kescomminges OFN..."
+echo ""
 
-FileUtils.chdir APP_ROOT do
-  # This script is a way to set up or update your development environment automatically.
-  # This script is idempotent, so that you can run it at any time and get an expectable outcome.
-  # Add necessary setup steps to this file.
+# Créer les symlinks .env → KESCOMMINGES/
+cd "$APP_DIR"
 
-  puts "== Installing dependencies =="
+KESCOMMINGES_DIR="$APP_DIR/KESCOMMINGES"
+if [ ! -d "$KESCOMMINGES_DIR" ]; then
+  echo "❌ Erreur : KESCOMMINGES/ introuvable"
+  echo "   Clonez le dépôt privé :"
+  echo "   git clone git@github.com:kescomminges/KESCOMMINGES.git KESCOMMINGES"
+  exit 1
+fi
 
-  # Check first (it's quicker), then install new gems if necessary
-  system("bundle check 2> /dev/null") || system!(BUNDLE_ENV, "bundle install")
+echo "✓ Création des symlinks secrets..."
 
-  # Install JavaScript dependencies
-  system!("script/nodenv-install.sh")
-  system!("bin/yarn")
+# .env (prod)
+if [ ! -L .env ] || [ "$(readlink .env 2>/dev/null)" != "KESCOMMINGES/.env" ]; then
+  rm -f .env
+  ln -s KESCOMMINGES/.env .env
+  echo "  ✓ .env → KESCOMMINGES/.env"
+fi
 
-  # puts "\n== Copying sample files =="
-  # unless File.exist?("config/database.yml")
-  #   FileUtils.cp "config/database.yml.sample", "config/database.yml"
-  # end
+# .env.dev (dev)
+if [ -f KESCOMMINGES/.env.dev ]; then
+  if [ ! -L .env.dev ] || [ "$(readlink .env.dev 2>/dev/null)" != "KESCOMMINGES/.env.dev" ]; then
+    rm -f .env.dev
+    ln -s KESCOMMINGES/.env.dev .env.dev
+    echo "  ✓ .env.dev → KESCOMMINGES/.env.dev"
+  fi
+fi
 
-  puts "\n== Preparing database, removing old logs and tempfiles =="
-  system! "bin/rails db:prepare log:clear tmp:clear"
-  system! "rm -f tmp/capybara/screenshots/*.png"
-  system! "rm -f tmp/invoices/*.pdf"
-  system! "rm -f tmp/javascripts/*.js"
-  system! "rm -f tmp/karma_unit.js*"
-  system! "rm -rf tmp/product_import-*"
+# config/master.key
+if [ -f KESCOMMINGES/master.key ]; then
+  mkdir -p config
+  if [ ! -L config/master.key ] || [ "$(readlink config/master.key 2>/dev/null)" != "../KESCOMMINGES/master.key" ]; then
+    rm -f config/master.key
+    ln -s ../KESCOMMINGES/master.key config/master.key
+    echo "  ✓ config/master.key → KESCOMMINGES/master.key"
+  fi
+fi
 
-  puts "\n== Removing any precompiled assets that would be out of date now =="
-  system! "rm -rf public/assets/"
-  system! "rm -rf public/packs/"
-  system! "rm -rf public/packs-test/"
-
-  puts "\n== Restarting application server =="
-  # system! "bin/rails restart"
-  # Faster to do it manually:
-  system! "touch tmp/restart.txt"
-end
+echo ""
+echo "✅ Setup terminé!"
+echo ""
+echo "Prochaines étapes :"
+echo "  bundle install"
+echo "  yarn install"
+echo "  ./bin/deploy deploy   (en prod)"
+echo "  ./bin/deploy deploy --env=dev (en dev)"
