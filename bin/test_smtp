@@ -1,0 +1,208 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Script de test SMTP autonome — aucune dépendance Rails
+# Usage : bin/test_smtp [options]
+#
+# Lit la config depuis le .env si présent, chaque option peut être surchargée
+# en argument ou en variable d'environnement.
+#
+# Exemples :
+#   bin/test_smtp                                         # tout depuis .env, envoi à MAILS_FROM
+#   bin/test_smtp --to moi@gmail.com                      # destinataire différent
+#   bin/test_smtp --from contact@kescomminges.fr --to moi@exemple.fr
+#   bin/test_smtp --host ssl0.ovh.net --port 465 --ssl    # tester SSL au lieu de TLS/STARTTLS
+#   bin/test_smtp --user contact@kescomminges.fr --pass MONMOTDEPASSE --from contact@kescomminges.fr
+#   bin/test_smtp --sidekiq                               # envoyer via Sidekiq (Rails requis)
+
+require 'net/smtp'
+require 'optparse'
+
+# ── Chargement du .env ──────────────────────────────────────────────────────
+env_file = File.join(__dir__, '..', '.env')
+if File.exist?(env_file)
+  File.foreach(env_file) do |line|
+    line = line.strip
+    next if line.empty? || line.start_with?('#')
+    key, val = line.split('=', 2)
+    next unless key && val
+    val = val.gsub(/\A["']|["']\z/, '') # retirer guillemets
+    ENV[key] ||= val                     # ne pas écraser les vraies vars d'env
+  end
+  puts "→ .env chargé depuis #{File.expand_path(env_file)}"
+else
+  puts "→ Pas de .env trouvé, utilisation des variables d'environnement uniquement"
+end
+
+# ── Valeurs par défaut (depuis .env / env) ───────────────────────────────────
+defaults = {
+  host:     ENV.fetch('MAIL_HOST',         'ssl0.ovh.net'),
+  port:     ENV.fetch('MAIL_PORT',         '587').to_i,
+  user:     ENV.fetch('SMTP_USERNAME',     ''),
+  pass:     ENV.fetch('SMTP_PASSWORD',     ''),
+  from:     ENV.fetch('MAILS_FROM',        ENV.fetch('SMTP_USERNAME', '')),
+  domain:   ENV.fetch('MAIL_DOMAIN',       ENV.fetch('MAIL_HOST', 'localhost')),
+  secure:   ENV.fetch('MAIL_SECURE_CONNECTION', 'TLS'),
+}
+
+# ── Parsing des arguments ────────────────────────────────────────────────────
+options = defaults.dup
+options[:to]      = nil
+options[:sidekiq] = false
+options[:verbose] = false
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: bin/test_smtp [options]"
+  opts.separator ""
+  opts.separator "Options SMTP :"
+  opts.on("--host HOST",   "Serveur SMTP       (défaut: #{defaults[:host]})")    { |v| options[:host] = v }
+  opts.on("--port PORT",   "Port SMTP          (défaut: #{defaults[:port]})")    { |v| options[:port] = v.to_i }
+  opts.on("--user USER",   "Identifiant SMTP   (défaut: SMTP_USERNAME du .env)") { |v| options[:user] = v }
+  opts.on("--pass PASS",   "Mot de passe SMTP  (défaut: SMTP_PASSWORD du .env)") { |v| options[:pass] = v }
+  opts.on("--from FROM",   "Expéditeur From    (défaut: MAILS_FROM du .env)")    { |v| options[:from] = v }
+  opts.on("--domain DOM",  "Domaine HELO       (défaut: MAIL_DOMAIN du .env)")   { |v| options[:domain] = v }
+  opts.on("--to TO",       "Destinataire (défaut: identique à --from)")          { |v| options[:to] = v }
+  opts.separator ""
+  opts.separator "Mode de connexion sécurisée :"
+  opts.on("--tls",         "STARTTLS (port 587) — c'est MAIL_SECURE_CONNECTION=TLS")  { options[:secure] = 'TLS' }
+  opts.on("--ssl",         "SSL wrapper (port 465) — pour MAIL_SECURE_CONNECTION=SSL") { options[:secure] = 'SSL' }
+  opts.on("--no-tls",      "Pas de chiffrement (port 25)")                             { options[:secure] = 'None' }
+  opts.separator ""
+  opts.separator "Autres :"
+  opts.on("--sidekiq",     "Envoyer via Sidekiq/Rails au lieu de Net::SMTP direct") { options[:sidekiq] = true }
+  opts.on("--verbose",     "Afficher la transaction SMTP complète")                  { options[:verbose] = true }
+  opts.on("-h", "--help",  "Afficher cette aide") { puts opts; exit }
+end.parse!
+
+options[:to] ||= options[:from]
+
+# ── Résumé de la config ──────────────────────────────────────────────────────
+puts ""
+puts "┌─ Configuration SMTP ──────────────────────────────────────────"
+puts "│  Host     : #{options[:host]}:#{options[:port]}"
+puts "│  User     : #{options[:user]}"
+puts "│  Pass     : #{options[:pass].empty? ? '(vide)' : '*' * [options[:pass].length, 8].min}"
+puts "│  From     : #{options[:from]}"
+puts "│  To       : #{options[:to]}"
+puts "│  Domain   : #{options[:domain]}"
+puts "│  Sécurité : #{options[:secure]}"
+puts "│  Mode     : #{options[:sidekiq] ? 'Sidekiq/Rails' : 'Net::SMTP direct'}"
+puts "└───────────────────────────────────────────────────────────────"
+puts ""
+
+# ── Corps du mail de test ────────────────────────────────────────────────────
+timestamp = Time.now.strftime("%Y-%m-%d %H:%M:%S")
+message = <<~MAIL
+  From: Kescomminges Test <#{options[:from]}>
+  To: #{options[:to]}
+  Subject: [TEST SMTP] #{timestamp}
+  MIME-Version: 1.0
+  Content-Type: text/plain; charset=UTF-8
+  Content-Transfer-Encoding: 8bit
+
+  Ceci est un mail de test envoyé depuis bin/test_smtp.
+
+  Configuration testée :
+    Host     : #{options[:host]}:#{options[:port]}
+    User     : #{options[:user]}
+    From     : #{options[:from]}
+    Sécurité : #{options[:secure]}
+    Date     : #{timestamp}
+
+  Si vous recevez ce message, la configuration SMTP fonctionne.
+MAIL
+
+# ── Mode Sidekiq/Rails ───────────────────────────────────────────────────────
+if options[:sidekiq]
+  puts "Chargement de l'environnement Rails..."
+  require_relative '../config/environment'
+
+  puts "Envoi via ActionMailer/Sidekiq..."
+  require_relative '../app/mailers/contact_mailer'
+
+  ContactMailer.contact_message(
+    name:    "Test SMTP #{timestamp}",
+    email:   options[:to],
+    subject: "Test SMTP #{timestamp}",
+    message: "Ceci est un test d'envoi via Sidekiq/ActionMailer.\n\nHost: #{options[:host]}:#{options[:port]}\nFrom: #{options[:from]}"
+  ).deliver_later
+
+  puts "✓ Job mis en queue Sidekiq — vérifiez /admin/sidekiq pour voir s'il passe"
+  puts "  (Si le job reste en 'retries' c'est que le SMTP échoue — l'erreur est dans les logs Sidekiq)"
+  exit 0
+end
+
+# ── Mode Net::SMTP direct ────────────────────────────────────────────────────
+puts "Connexion directe Net::SMTP..."
+
+begin
+  smtp_opts = {
+    address:   options[:host],
+    port:      options[:port],
+    domain:    options[:domain],
+  }
+
+  case options[:secure]
+  when 'SSL'
+    smtp_opts[:tls]                = true
+    smtp_opts[:tls_verify]         = true
+  when 'TLS'
+    smtp_opts[:starttls]           = :always
+    smtp_opts[:tls_verify]         = true
+  when 'None'
+    # pas de chiffrement
+  end
+
+  unless options[:user].empty?
+    smtp_opts[:user_name]          = options[:user]
+    smtp_opts[:password]           = options[:pass]
+    smtp_opts[:authentication]     = :login
+  end
+
+  if options[:verbose]
+    puts "── Début transaction SMTP ──"
+    Net::SMTP.start(
+      smtp_opts[:address],
+      smtp_opts[:port],
+      smtp_opts[:domain],
+      smtp_opts[:user_name],
+      smtp_opts[:password],
+      smtp_opts[:authentication],
+      **smtp_opts.slice(:tls, :starttls, :tls_verify).compact
+    ) do |smtp|
+      smtp.debug_output = $stdout
+      smtp.send_message(message, options[:from], options[:to])
+    end
+    puts "── Fin transaction SMTP ──"
+  else
+    Net::SMTP.start(
+      smtp_opts[:address],
+      smtp_opts[:port],
+      smtp_opts[:domain],
+      smtp_opts[:user_name],
+      smtp_opts[:password],
+      smtp_opts[:authentication],
+      **smtp_opts.slice(:tls, :starttls, :tls_verify).compact
+    ) do |smtp|
+      smtp.send_message(message, options[:from], options[:to])
+    end
+  end
+
+  puts "✓ Mail envoyé avec succès à #{options[:to]}"
+  puts "  Vérifiez votre boîte (et les spams)."
+
+rescue Net::SMTP::FatalError => e
+  puts "✗ Erreur SMTP fatale : #{e.message}"
+  puts "  → Vérifiez l'adresse From, le compte SMTP, ou les restrictions d'envoi OVH"
+rescue Net::SMTP::Error => e
+  puts "✗ Erreur SMTP : #{e.message}"
+rescue Net::OpenTimeout, Errno::ECONNREFUSED => e
+  puts "✗ Connexion impossible : #{e.message}"
+  puts "  → Vérifiez host/port et que le port n'est pas bloqué par un firewall"
+rescue OpenSSL::SSL::SSLError => e
+  puts "✗ Erreur SSL/TLS : #{e.message}"
+  puts "  → Essayez --ssl (port 465) ou --tls (port 587) ou --no-tls (port 25)"
+rescue => e
+  puts "✗ Erreur inattendue : #{e.class} — #{e.message}"
+  puts e.backtrace.first(5).join("\n") if options[:verbose]
+end
