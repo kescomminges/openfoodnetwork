@@ -1,6 +1,6 @@
 # Session — kescomminges.fr OFN
 
-_Dernière mise à jour : 2026-02-25_
+_Dernière mise à jour : 2026-02-28_
 
 ## Résumé des échanges récents
 
@@ -97,10 +97,49 @@ _Dernière mise à jour : 2026-02-25_
   - Solution : suppression des 5 fichiers `.github/workflows/` (build, linters, stage, auto-author-assign, move-dependency-pr)
   - Commit : `c10bf7163c`
 
+### 2026-02-27 — Session 9
+
+- **Vérification du contexte** — lecture session.md et état du projet
+  - Tout bon, prêt à bosser demain
+  - Langue de communication : français confirmé
+
+### 2026-02-28 — Session 10
+
+- **Implémentation Plan — Basculement domaine e-commerce vers kesco.fr**
+  - Décision stratégique : plateforme OFN = `kesco.fr` (court, mémorisable)
+  - `kescomminges.fr` réservé pour vitrine phase 2 (conserverie/atelier)
+  - Dénomination légale SARL : **KESCOMMINGES** (inchangé)
+  - Emails :
+    - `contact@kesco.fr` → commerce (clients, commandes OFN)
+    - `contact@kescomminges.fr` → legal (comptable, partenaires institutionnels)
+
+  **Modifications dans dépôt KESCOMMINGES (privé) :**
+  - `variables.yml` : site `kescomminges.fr` → `kesco.fr`, email commerce + ajout email_legal
+  - `.env` (prod) : SITE_URL, SITE_NAME, SMTP_USERNAME, MAILS_FROM, SCHEDULE_NOTIFICATIONS
+  - `.env.dev` : SITE_URL, SITE_NAME
+  - `CLAUDE.md` : update documentation (site url, email)
+  - Commit : `chore: basculement domaine principal kesco.fr (e-commerce)`
+  - Push sur `github.com/kescomminges/KESCOMMINGES` ✅
+
+  **Modifications dans dépôt OFN (public) :**
+  - `CLAUDE.md` : section "Configuration de l'instance (.env)"
+  - Commit : `docs: mise à jour CLAUDE.md — domaine principal kesco.fr`
+  - Push sur `github.com/kescomminges/openfoodnetwork` ✅
+
+  **Prérequis avant déploiement (hors code) :**
+  - ⚠️ Créer boîte `contact@kesco.fr` chez OVH (SMTP)
+  - ⚠️ Pointer DNS `kesco.fr` vers serveur
+  - Redirection `kescomminges.fr` → `kesco.fr` (après switch)
+  - Ajouter `kesco.fr` dans Plausible Analytics
+
 ## Todos en cours
 
-- [ ] Tester `bin/test_smtp` sur le serveur avec les credentials OVH de contact@kescomminges.fr
-- [ ] Mettre à jour `.env` avec la config SMTP qui fonctionne pour contact@kescomminges.fr
+- [ ] **Créer boîte `contact@kesco.fr` chez OVH** (avant déploiement)
+- [ ] **Pointer DNS `kesco.fr` vers le serveur** (avant déploiement)
+- [ ] Tester SMTP de la nouvelle boîte `contact@kesco.fr` avec `bin/test_smtp`
+- [ ] Déployer sur prod : `bin/deploy update` depuis `kesco_custom1`
+- [ ] Ajouter `kesco.fr` dans Plausible Analytics (interface)
+- [ ] Mettre en place redirection `kescomminges.fr` → `kesco.fr` (Nginx ou DNS)
 - [ ] Contacter Poiscaille pour formaliser le partenariat point relais
 
 ## Tâches TODO connues (backlog projet)
