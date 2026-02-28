@@ -1,0 +1,24 @@
+= render :partial => 'spree/admin/shared/configuration_menu'
+
+- content_for :page_title do
+  = t('.title')
+
+= form_tag main_app.admin_plausible_settings_path, :method => :put do
+
+  .div
+    %legend= t('.info_html')
+    = tag(:br)
+    = t('.config_instructions_html')
+
+  .field
+    = label_tag(:plausible_domain, t('.plausible_domain')) + tag(:br)
+    = preference_field_tag("preferences[#{:plausible_domain}]", Spree::Config[:plausible_domain], type: Spree::Config.preference_type(:plausible_domain))
+    %p.hint= t('.plausible_domain_hint')
+
+  .field
+    = label_tag(:plausible_script_url, t('.plausible_script_url')) + tag(:br)
+    = preference_field_tag("preferences[#{:plausible_script_url}]", Spree::Config[:plausible_script_url], type: Spree::Config.preference_type(:plausible_script_url))
+    %p.hint= t('.plausible_script_url_hint')
+
+  .form-buttons
+    = button t(:update), 'icon-refresh'
