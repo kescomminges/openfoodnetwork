@@ -303,6 +303,17 @@ scss = <<~SCSS
   $kesco-checkout-order-summary-bg: #{checkout_order_summary_bg}; // lighten(principal, 48%)
   $kesco-checkout-dirty-bg:         #{checkout_dirty_bg};          // lighten(accent, 32%) — fieldset erreur
   $kesco-checkout-valid-bg:         #{checkout_valid_bg};          // lighten(principal, 40%) — fieldset valide
+
+  // ---------------------------------------------------------------------------
+  // Redéfinitions des variables OFN standard (pour appliquer les couleurs)
+  // ---------------------------------------------------------------------------
+  // Ces variables override les valeurs OFN par défaut
+
+  $ofn-brand: #{secondaire};           // CTA, boutons principaux
+  $brand-colour: #{principal};         // Topbar, headers
+  $accent-color: #{troisieme};         // Accents tertiaires
+  $alert-color: #e74c3c;               // (inchangé — alerte/erreur)
+  $success-color: #27ae60;              // (inchangé — succès)
 SCSS
 
 # =============================================================================

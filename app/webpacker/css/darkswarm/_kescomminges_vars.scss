@@ -2,7 +2,7 @@
 // _kescomminges_vars.scss — Variables SCSS Kescomminges
 //
 // FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER MANUELLEMENT
-// Généré le : 2026-02-28 16:16
+// Généré le : 2026-02-28 16:41
 // Source    : KESCOMMINGES/variables.yml
 // Script    : bin/generate_scss_vars
 //
@@ -85,3 +85,14 @@ $kesco-email-callout-bg: #a2d8e7; // lighten(principal, 52%)
 $kesco-checkout-order-summary-bg: #92d1e3; // lighten(principal, 48%)
 $kesco-checkout-dirty-bg:         #eaccb7;          // lighten(accent, 32%) — fieldset erreur
 $kesco-checkout-valid-bg:         #71c3db;          // lighten(principal, 40%) — fieldset valide
+
+// ---------------------------------------------------------------------------
+// Redéfinitions des variables OFN standard (pour appliquer les couleurs)
+// ---------------------------------------------------------------------------
+// Ces variables override les valeurs OFN par défaut
+
+$ofn-brand: #b6244f;           // CTA, boutons principaux
+$brand-colour: #1a5566;         // Topbar, headers
+$accent-color: #c4723a;         // Accents tertiaires
+$alert-color: #e74c3c;               // (inchangé — alerte/erreur)
+$success-color: #27ae60;              // (inchangé — succès)
