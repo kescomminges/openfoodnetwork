@@ -1,0 +1,319 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# =============================================================================
+# bin/generate_scss_vars — Génère _kescomminges_vars.scss depuis variables.yml
+#
+# Usage:
+#   ruby bin/generate_scss_vars
+#   ruby bin/generate_scss_vars --vars-file /chemin/vers/variables.yml
+#   ruby bin/generate_scss_vars --out /chemin/vers/_kescomminges_vars.scss
+#
+# Appelé automatiquement par bin/deploy avant assets:precompile.
+# Peut aussi être lancé manuellement en dev après modification de variables.yml.
+#
+# Toutes les dérivées de couleurs (lighten/darken) sont calculées ici en Ruby
+# et écrites comme valeurs hex dans le SCSS généré.
+# Cela évite d'utiliser les fonctions Sass dépréciées lighten()/darken().
+# =============================================================================
+
+require "yaml"
+require "date"
+
+# =============================================================================
+# Module de manipulation de couleurs (Ruby pur, sans gem externe)
+# =============================================================================
+module Color
+  # Parse un hex CSS (#rrggbb ou #rgb) → [r, g, b] entiers 0-255
+  def self.parse(hex)
+    hex = hex.strip.delete("#")
+    if hex.length == 3
+      hex = hex.chars.map { |c| c * 2 }.join
+    end
+    raise ArgumentError, "Couleur hex invalide : ##{hex}" unless hex.length == 6
+    [hex[0..1].to_i(16), hex[2..3].to_i(16), hex[4..5].to_i(16)]
+  end
+
+  # RGB → HSL  (h: 0-360, s: 0-1, l: 0-1)
+  def self.rgb_to_hsl(r, g, b)
+    r, g, b = r / 255.0, g / 255.0, b / 255.0
+    max = [r, g, b].max
+    min = [r, g, b].min
+    l = (max + min) / 2.0
+
+    if max == min
+      h = s = 0.0
+    else
+      d = max - min
+      s = l > 0.5 ? d / (2.0 - max - min) : d / (max + min)
+      h = case max
+          when r then ((g - b) / d + (g < b ? 6 : 0)) / 6.0
+          when g then ((b - r) / d + 2) / 6.0
+          when b then ((r - g) / d + 4) / 6.0
+          end
+    end
+    [h * 360, s, l]
+  end
+
+  # HSL → RGB  (h: 0-360, s: 0-1, l: 0-1) → [r, g, b] 0-255
+  def self.hsl_to_rgb(h, s, l)
+    h /= 360.0
+    if s == 0
+      v = (l * 255).round
+      return [v, v, v]
+    end
+    q = l < 0.5 ? l * (1 + s) : l + s - l * s
+    p = 2 * l - q
+    [h + 1.0/3, h, h - 1.0/3].map do |t|
+      t += 1 if t < 0
+      t -= 1 if t > 1
+      val = if t < 1.0/6 then p + (q - p) * 6 * t
+            elsif t < 1.0/2 then q
+            elsif t < 2.0/3 then p + (q - p) * (2.0/3 - t) * 6
+            else p
+            end
+      (val * 255).round.clamp(0, 255)
+    end
+  end
+
+  # Éclaircit une couleur hex de `pct` points de luminosité (0-100)
+  def self.lighten(hex, pct)
+    r, g, b = parse(hex)
+    h, s, l = rgb_to_hsl(r, g, b)
+    l = [l + pct / 100.0, 1.0].min
+    to_hex(*hsl_to_rgb(h, s, l))
+  end
+
+  # Assombrit une couleur hex de `pct` points de luminosité (0-100)
+  def self.darken(hex, pct)
+    r, g, b = parse(hex)
+    h, s, l = rgb_to_hsl(r, g, b)
+    l = [l - pct / 100.0, 0.0].max
+    to_hex(*hsl_to_rgb(h, s, l))
+  end
+
+  # Convertit [r, g, b] → "#rrggbb"
+  def self.to_hex(r, g, b)
+    "#%02x%02x%02x" % [r, g, b]
+  end
+end
+
+# =============================================================================
+# Chemins par défaut
+# =============================================================================
+
+SCRIPT_DIR = File.expand_path("..", __FILE__)
+REPO_ROOT  = File.expand_path("..", SCRIPT_DIR)
+
+DEFAULT_VARS_FILE = File.join(REPO_ROOT, "KESCOMMINGES", "variables.yml")
+DEFAULT_OUT_FILE  = File.join(
+  REPO_ROOT,
+  "app", "webpacker", "css", "darkswarm", "_kescomminges_vars.scss"
+)
+
+# =============================================================================
+# Parsing des arguments
+# =============================================================================
+
+vars_file = DEFAULT_VARS_FILE
+out_file  = DEFAULT_OUT_FILE
+
+i = 0
+while i < ARGV.length
+  case ARGV[i]
+  when "--vars-file"
+    vars_file = ARGV[i + 1]
+    i += 2
+  when "--out"
+    out_file = ARGV[i + 1]
+    i += 2
+  else
+    i += 1
+  end
+end
+
+# =============================================================================
+# Lecture de variables.yml
+# =============================================================================
+
+unless File.exist?(vars_file)
+  warn "[generate_scss_vars] ERREUR : fichier variables.yml introuvable : #{vars_file}"
+  warn "[generate_scss_vars] Conseil : cloner github.com/kescomminges/KESCOMMINGES dans #{File.dirname(vars_file)}"
+  exit 1
+end
+
+config = YAML.safe_load(File.read(vars_file), permitted_classes: [Symbol])
+
+couleurs = config["couleurs"]    || {}
+typo     = config["typographie"] || {}
+
+required_couleurs = %w[principal secondaire troisieme gris_fonce gris_clair]
+missing = required_couleurs.reject { |k| couleurs.key?(k) }
+unless missing.empty?
+  warn "[generate_scss_vars] AVERTISSEMENT : clés manquantes dans couleurs{} : #{missing.join(', ')}"
+end
+
+# =============================================================================
+# Valeurs sources avec fallbacks
+# =============================================================================
+
+principal  = couleurs["principal"]  || "#1a5566"
+secondaire = couleurs["secondaire"] || "#b6244f"
+troisieme  = couleurs["troisieme"]  || "#c4723a"
+gris_fonce = couleurs["gris_fonce"] || "#1a1a1a"
+gris_clair = couleurs["gris_clair"] || "#f2f2f2"
+
+font_titre = typo["font_titre"] || "'Playfair Display', Georgia, serif"
+font_corps = typo["font_corps"] || "Lato, Arial, sans-serif"
+
+# =============================================================================
+# Calcul des dérivées (remplace lighten()/darken() dans les SCSS)
+# =============================================================================
+
+# Gamme bleu canard — teal (depuis principal)
+teal_300 = Color.lighten(principal, 25)
+teal_400 = Color.lighten(principal, 15)
+teal_500 = principal
+teal_600 = Color.darken(principal, 8)
+
+# Gamme bordeaux — depuis secondaire (CTA, boutons)
+orange_400 = Color.lighten(secondaire, 12)
+orange_450 = secondaire
+orange_500 = secondaire
+orange_600 = Color.darken(secondaire, 10)
+
+# Bleu (liens, bouton success)
+clr_blue        = principal
+clr_blue_light  = Color.lighten(principal, 30)
+clr_blue_bright = Color.lighten(principal, 15)
+
+# Palette admin
+admin_orient           = Color.darken(principal, 8)
+admin_dark_blue        = Color.darken(principal, 16)
+admin_pale_blue        = Color.lighten(principal, 45)
+admin_mystic           = Color.lighten(principal, 50)   # fond lavande → teinte principal très claire
+admin_roof_terracotta  = Color.darken(secondaire, 12)
+admin_yellow           = Color.lighten(troisieme, 8)    # warning/alerte depuis troisième
+admin_fair_pink        = Color.lighten(secondaire, 38)
+admin_spree_light_blue = Color.lighten(principal, 50)
+admin_tags_bg          = Color.lighten(principal, 30)
+admin_panel_border     = principal
+admin_panel_hover      = Color.lighten(principal, 48)
+admin_panel_text       = Color.darken(principal, 20)
+
+# Email
+email_callout_bg = Color.lighten(principal, 52)
+
+# Checkout
+checkout_order_summary_bg = Color.lighten(principal, 48)  # fond résumé commande
+checkout_dirty_bg         = Color.lighten(troisieme, 32)  # fieldset erreur (teinte troisième)
+checkout_valid_bg         = Color.lighten(principal, 40)  # fieldset valide (teinte principal)
+
+# =============================================================================
+# Génération du fichier SCSS
+# =============================================================================
+
+timestamp = DateTime.now.strftime("%Y-%m-%d %H:%M")
+
+scss = <<~SCSS
+  // =============================================================================
+  // _kescomminges_vars.scss — Variables SCSS Kescomminges
+  //
+  // FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER MANUELLEMENT
+  // Généré le : #{timestamp}
+  // Source    : KESCOMMINGES/variables.yml
+  // Script    : bin/generate_scss_vars
+  //
+  // Pour mettre à jour : modifier variables.yml puis relancer bin/generate_scss_vars
+  // (ou lancer bin/deploy qui le fait automatiquement)
+  //
+  // Toutes les dérivées de couleurs sont calculées en Ruby (pas de lighten/darken
+  // Sass) pour éviter les avertissements de dépréciation Sass moderne.
+  // =============================================================================
+
+  // ---------------------------------------------------------------------------
+  // Couleurs sources Kescomminges (depuis variables.yml)
+  // ---------------------------------------------------------------------------
+
+  $kesco-principal:  #{principal};   // bleu canard — header, navigation
+  $kesco-secondaire: #{secondaire};  // bordeaux — CTA, boutons principaux
+  $kesco-troisieme:  #{troisieme};   // orange terracotta — couleur tertiaire
+  $kesco-gris-fonce: #{gris_fonce};  // texte courant, libellés
+  $kesco-gris-clair: #{gris_clair};  // fonds, surfaces neutres
+
+  // Alias rétrocompatibilité (pour les SCSS qui utilisent encore $kesco-accent)
+  $kesco-accent: $kesco-troisieme;
+
+  // ---------------------------------------------------------------------------
+  // Typographie Kescomminges (depuis variables.yml)
+  // ---------------------------------------------------------------------------
+
+  $kesco-font-titre: #{font_titre};
+  $kesco-font-corps: #{font_corps};
+
+  // ---------------------------------------------------------------------------
+  // Dérivées bleu canard — gamme teal (remplace lighten/darken Sass)
+  // ---------------------------------------------------------------------------
+
+  $kesco-teal-300: #{teal_300};   // lighten(principal, 25%)
+  $kesco-teal-400: #{teal_400};   // lighten(principal, 15%)
+  $kesco-teal-500: #{teal_500};   // principal
+  $kesco-teal-600: #{teal_600};   // darken(principal, 8%)
+
+  $kesco-clr-blue:        #{clr_blue};        // = principal
+  $kesco-clr-blue-light:  #{clr_blue_light};  // lighten(principal, 30%)
+  $kesco-clr-blue-bright: #{clr_blue_bright}; // lighten(principal, 15%)
+
+  // ---------------------------------------------------------------------------
+  // Dérivées bordeaux — gamme secondaire (remplace lighten/darken Sass)
+  // ---------------------------------------------------------------------------
+
+  $kesco-orange-400: #{orange_400};  // lighten(secondaire, 12%)
+  $kesco-orange-450: #{orange_450};  // secondaire
+  $kesco-orange-500: #{orange_500};  // secondaire
+  $kesco-orange-600: #{orange_600};  // darken(secondaire, 10%)
+
+  // ---------------------------------------------------------------------------
+  // Dérivées palette admin (remplace lighten/darken Sass dans palette.scss)
+  // ---------------------------------------------------------------------------
+
+  $kesco-admin-orient:          #{admin_orient};          // darken(principal, 8%)
+  $kesco-admin-dark-blue:       #{admin_dark_blue};       // darken(principal, 16%)
+  $kesco-admin-pale-blue:       #{admin_pale_blue};       // lighten(principal, 45%)
+  $kesco-admin-mystic:          #{admin_mystic};          // lighten(fond, 15%)
+  $kesco-admin-roof-terracotta: #{admin_roof_terracotta}; // darken(secondaire, 12%)
+  $kesco-admin-yellow:          #{admin_yellow};          // lighten(troisieme, 8%)
+  $kesco-admin-fair-pink:       #{admin_fair_pink};       // lighten(secondaire, 38%)
+  $kesco-admin-spree-light-blue: #{admin_spree_light_blue}; // lighten(principal, 50%)
+  $kesco-admin-tags-bg:         #{admin_tags_bg};         // lighten(principal, 30%)
+  $kesco-admin-panel-border:    #{admin_panel_border};    // = principal
+  $kesco-admin-panel-hover:     #{admin_panel_hover};     // lighten(principal, 48%)
+  $kesco-admin-panel-text:      #{admin_panel_text};      // darken(principal, 20%)
+
+  // ---------------------------------------------------------------------------
+  // Dérivées email
+  // ---------------------------------------------------------------------------
+
+  $kesco-email-callout-bg: #{email_callout_bg}; // lighten(principal, 52%)
+
+  // ---------------------------------------------------------------------------
+  // Dérivées checkout
+  // ---------------------------------------------------------------------------
+
+  $kesco-checkout-order-summary-bg: #{checkout_order_summary_bg}; // lighten(principal, 48%)
+  $kesco-checkout-dirty-bg:         #{checkout_dirty_bg};          // lighten(accent, 32%) — fieldset erreur
+  $kesco-checkout-valid-bg:         #{checkout_valid_bg};          // lighten(principal, 40%) — fieldset valide
+SCSS
+
+# =============================================================================
+# Écriture du fichier
+# =============================================================================
+
+File.write(out_file, scss)
+puts "[generate_scss_vars] OK — #{out_file} généré (#{scss.lines.count} lignes)"
+puts "[generate_scss_vars]   principal  : #{principal}"
+puts "[generate_scss_vars]   secondaire : #{secondaire}"
+puts "[generate_scss_vars]   troisieme  : #{troisieme}"
+puts "[generate_scss_vars]   gris_fonce : #{gris_fonce} / gris_clair : #{gris_clair}"
+puts "[generate_scss_vars]   teal-300..600 : #{teal_300} #{teal_400} #{teal_500} #{teal_600}"
+puts "[generate_scss_vars]   bordeaux-400..600 : #{orange_400} #{orange_450} #{orange_600}"
