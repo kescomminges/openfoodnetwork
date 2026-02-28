@@ -1,0 +1,1309 @@
+#!/usr/bin/env bash
+# =============================================================================
+# bin/deploy — Script de déploiement et mise à jour pour l'instance Kescomminges OFN
+#
+# Usage:
+#   bin/deploy update              — Mise à jour + deploy depuis origin/kesco_custom2 (prod)
+#   bin/deploy update --env dev    — Mise à jour + deploy depuis origin/kesco_custom2 (dev)
+#   bin/deploy deploy              — Déploie le code courant sans toucher à git
+#   bin/deploy deploy --env dev    — Idem sur l'instance dev
+#   bin/deploy rollback            — Revient au commit avant le dernier deploy
+#   bin/deploy rollback --env dev  — Idem sur l'instance dev
+#   bin/deploy rebase-upstream     — Rebase depuis upstream/master + push (maintenance maj OFN)
+#   bin/deploy rebase-upstream --env dev
+#   bin/deploy status              — État : commit, services, derniers deploys
+#   bin/deploy status --env dev    — Idem sur l'instance dev
+#   bin/deploy backup              — Sauvegarde de la base de données
+#   bin/deploy backup --env dev    — Idem sur la BDD dev
+#   bin/deploy help                — Affiche cette aide
+#
+# Prérequis :
+#   - rbenv installé dans $HOME de l'user qui lance le script
+#   - nvm installé dans $HOME de l'user qui lance le script (NVM_DIR=$HOME/.nvm)
+#   - sudo configuré pour systemctl restart/reload sur les services Puma/Sidekiq
+#     Exemple /etc/sudoers.d/deploy-ofn :
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn-dev
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn-dev
+#       kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn-dev
+#
+# =============================================================================
+
+set -euo pipefail
+
+# =============================================================================
+# ── PARSING DE L'OPTION --env ─────────────────────────────────────────────────
+# =============================================================================
+
+DEPLOY_ENV="prod"
+FILTERED_ARGS=()
+for arg in "$@"; do
+  if [ "$arg" = "--env" ]; then
+    : # le prochain argument sera capturé
+  elif [ "${_PREV_ARG:-}" = "--env" ]; then
+    DEPLOY_ENV="$arg"
+  else
+    FILTERED_ARGS+=("$arg")
+  fi
+  _PREV_ARG="$arg"
+done
+set -- "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
+
+# =============================================================================
+# ── CONFIGURATION — À ADAPTER À VOTRE ENVIRONNEMENT ──────────────────────────
+# =============================================================================
+
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  APP_DIR="/home/kescomminges/ofn/openfoodnetwork-dev"
+else
+  APP_DIR="/home/kescomminges/ofn/openfoodnetwork"
+fi
+
+# Remotes git
+UPSTREAM_REMOTE="upstream"
+UPSTREAM_BRANCH="master"   # utilisé pour rebase-upstream uniquement
+ORIGIN_REMOTE="origin"
+KESCO_BRANCH="kesco_custom2"  # branche de déploiement normale (maj des personnalisations)
+
+# Stratégie de mise à jour : "kesco_branch" (kesco_custom2) est le défaut
+# Pour mettre à jour depuis upstream OFN, utiliser : bin/deploy rebase-upstream
+UPDATE_STRATEGY="kesco_branch"
+
+# Services systemd — noms différents selon prod/dev
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  PUMA_SERVICE="puma-ofn-dev"
+  SIDEKIQ_SERVICE="sidekiq-ofn-dev"
+else
+  PUMA_SERVICE="puma-ofn"
+  SIDEKIQ_SERVICE="sidekiq-ofn"
+fi
+
+# Base de données (PostgreSQL)
+# Les variables OFN_DB_* sont lues depuis le .env chargé par le service,
+# mais on en a besoin ici pour pg_isready et pg_dump — on lit le bon .env
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  _ENV_FILE="$APP_DIR/.env.dev"
+else
+  _ENV_FILE="$APP_DIR/.env"
+fi
+# Charger les variables DB depuis le fichier .env correspondant
+# (git-crypt doit être déverrouillé — vérifié plus loin dans preflight_checks)
+if [ -f "$_ENV_FILE" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$_ENV_FILE" 2>/dev/null || true
+  set +a
+fi
+DB_NAME="${OFN_DB_NAME:-open_food_network_prod}"
+DB_USER="${OFN_DB_USERNAME:-ofn}"
+DB_HOST="${OFN_DB_HOST:-localhost}"
+DB_PORT="${OFN_DB_PORT:-5432}"
+
+# Répertoire de sauvegarde
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  BACKUP_DIR="$HOME/backups/ofn-dev"
+else
+  BACKUP_DIR="$HOME/backups/ofn"
+fi
+BACKUP_KEEP=7  # Nombre de backups à conserver
+
+# Fichier de rollback (séparé par env pour éviter les collisions)
+ROLLBACK_FILE="/tmp/ofn_deploy_rollback_${DEPLOY_ENV}"
+
+# Log des déploiements
+LOG_FILE="$HOME/deploys-${DEPLOY_ENV}.log"
+
+# Health check
+if [ "$DEPLOY_ENV" = "dev" ]; then
+  HEALTH_CHECK_URL="http://localhost:3001"
+else
+  HEALTH_CHECK_URL="http://localhost:3000"
+fi
+HEALTH_CHECK_RETRIES=12
+HEALTH_CHECK_WAIT=15  # secondes entre chaque tentative
+
+# Rails env
+export RAILS_ENV="production"
+
+# Désactive spring (gem de dev qui ne doit pas tourner en production)
+export DISABLE_SPRING=1
+
+# =============================================================================
+# ── COULEURS ──────────────────────────────────────────────────────────────────
+# =============================================================================
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m' # No Color
+
+# =============================================================================
+# ── FONCTIONS UTILITAIRES ────────────────────────────────────────────────────
+# =============================================================================
+
+log()     { echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $*"; }
+success() { echo -e "${GREEN}✔${NC} $*"; }
+warn()    { echo -e "${YELLOW}⚠${NC}  $*"; }
+error()   { echo -e "${RED}✘${NC}  $*" >&2; }
+header()  { echo -e "\n${BOLD}$*${NC}"; echo "$(printf '─%.0s' {1..60})"; }
+logfile() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
+
+# Demande confirmation — retourne 0 si oui, 1 si non
+confirm() {
+  local prompt="${1:-Continuer ?}"
+  local strict="${2:-}" # si "strict", exige de taper "oui" en entier
+  # Vérifier que stdin est un terminal interactif
+  if ! [ -t 0 ]; then
+    error "Impossible de lire la confirmation : stdin n'est pas un terminal."
+    error "Lancez ce script directement dans un terminal interactif."
+    exit 1
+  fi
+  local answer=""
+  if [ -n "$strict" ]; then
+    read -r -p "$(echo -e "${YELLOW}?${NC}  $prompt [tapez 'oui' pour confirmer] ") " answer || true
+    [ "$answer" = "oui" ]
+  else
+    read -r -p "$(echo -e "${YELLOW}?${NC}  $prompt [o/N] ") " answer || true
+    [[ "$answer" =~ ^[oOyY]$ ]]
+  fi
+}
+
+# Vérifie qu'une commande est disponible
+require_cmd() {
+  if ! command -v "$1" &>/dev/null; then
+    error "Commande introuvable : $1"
+    return 1
+  fi
+}
+
+# Durée écoulée depuis un timestamp unix
+elapsed() {
+  local start=$1
+  local end
+  end=$(date +%s)
+  local secs=$(( end - start ))
+  printf '%dm%02ds' $(( secs / 60 )) $(( secs % 60 ))
+}
+
+# =============================================================================
+# ── LIENS SYMBOLIQUES .env → KESCOMMINGES/ ───────────────────────────────────
+# =============================================================================
+
+ensure_env_symlinks() {
+  local kescomminges_dir="$APP_DIR/KESCOMMINGES"
+
+  if [ ! -d "$kescomminges_dir" ]; then
+    error "KESCOMMINGES/ introuvable dans $APP_DIR"
+    error "Clonez-le : git clone git@github.com:kescomminges/KESCOMMINGES.git $kescomminges_dir"
+    exit 1
+  fi
+
+  # .env (prod)
+  local src_env="$kescomminges_dir/.env"
+  local dst_env="$APP_DIR/.env"
+  if [ ! -f "$src_env" ]; then
+    error "Fichier secrets introuvable : $src_env"
+    error "Copiez votre .env dans KESCOMMINGES/.env"
+    exit 1
+  fi
+  if [ -L "$dst_env" ] && [ "$(readlink "$dst_env")" = "$src_env" ]; then
+    : # symlink déjà correct
+  else
+    [ -e "$dst_env" ] && rm -f "$dst_env"
+    ln -s "$src_env" "$dst_env"
+    success "Lien créé : .env → KESCOMMINGES/.env"
+  fi
+
+  # .env.dev (dev) — optionnel
+  local src_dev="$kescomminges_dir/.env.dev"
+  local dst_dev="$APP_DIR/.env.dev"
+  if [ -f "$src_dev" ]; then
+    if [ -L "$dst_dev" ] && [ "$(readlink "$dst_dev")" = "$src_dev" ]; then
+      : # symlink déjà correct
+    else
+      [ -e "$dst_dev" ] && rm -f "$dst_dev"
+      ln -s "$src_dev" "$dst_dev"
+      success "Lien créé : .env.dev → KESCOMMINGES/.env.dev"
+    fi
+  fi
+
+  # config/master.key — optionnel (peut ne pas exister sur toutes les instances)
+  local src_key="$kescomminges_dir/master.key"
+  local dst_key="$APP_DIR/config/master.key"
+  if [ -f "$src_key" ]; then
+    if [ -L "$dst_key" ] && [ "$(readlink "$dst_key")" = "$src_key" ]; then
+      : # symlink déjà correct
+    else
+      [ -e "$dst_key" ] && rm -f "$dst_key"
+      ln -s "$src_key" "$dst_key"
+      success "Lien créé : config/master.key → KESCOMMINGES/master.key"
+    fi
+  fi
+
+  # config/newrelic.yml — optionnel
+  local src_nr="$kescomminges_dir/newrelic.yml"
+  local dst_nr="$APP_DIR/config/newrelic.yml"
+  if [ -f "$src_nr" ]; then
+    if [ -L "$dst_nr" ] && [ "$(readlink "$dst_nr")" = "$src_nr" ]; then
+      : # symlink déjà correct
+    else
+      [ -e "$dst_nr" ] && rm -f "$dst_nr"
+      ln -s "$src_nr" "$dst_nr"
+      success "Lien créé : config/newrelic.yml → KESCOMMINGES/newrelic.yml"
+    fi
+  fi
+}
+
+# =============================================================================
+# ── INITIALISATION DE L'ENVIRONNEMENT ────────────────────────────────────────
+# =============================================================================
+
+init_env() {
+  # Afficher l'environnement cible
+  if [ "$DEPLOY_ENV" = "dev" ]; then
+    echo -e "\n${YELLOW}${BOLD}⚙  Environnement : DEV (dev.kescomminges.fr — port 3001)${NC}"
+  else
+    echo -e "\n${BOLD}⚙  Environnement : PROD (kescomminges.fr — port 3000)${NC}"
+  fi
+
+  # Charger rbenv (nécessaire dans les shells non-interactifs)
+  if [ -d "$HOME/.rbenv" ]; then
+    export PATH="$HOME/.rbenv/bin:$PATH"
+    eval "$(rbenv init - bash)"
+  else
+    error "rbenv introuvable dans $HOME/.rbenv"
+    exit 1
+  fi
+
+  # Charger nvm (nécessaire dans les shells non-interactifs)
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$NVM_DIR/nvm.sh" --no-use
+  else
+    warn "nvm introuvable dans $NVM_DIR — Node ne sera pas géré automatiquement"
+  fi
+
+  # Se placer dans le répertoire de l'application
+  if [ ! -d "$APP_DIR" ]; then
+    error "Répertoire application introuvable : $APP_DIR"
+    exit 1
+  fi
+  cd "$APP_DIR"
+
+  # Vérifier/créer les liens symboliques .env → KESCOMMINGES/.env
+  ensure_env_symlinks
+
+  # Créer le répertoire de backup si nécessaire
+  mkdir -p "$BACKUP_DIR"
+
+  # Créer le fichier de log si nécessaire
+  touch "$LOG_FILE"
+}
+
+# =============================================================================
+# ── VÉRIFICATIONS PRÉ-VOL ────────────────────────────────────────────────────
+# =============================================================================
+
+preflight_checks() {
+  header "Vérifications pré-déploiement"
+
+  local failed=0
+
+  # 1. Espace disque (>= 500 MB libres dans APP_DIR)
+  local free_mb
+  free_mb=$(df -m "$APP_DIR" | awk 'NR==2 {print $4}')
+  if [ "$free_mb" -lt 500 ]; then
+    error "Espace disque insuffisant : ${free_mb}MB libres (minimum 500MB)"
+    failed=1
+  else
+    success "Espace disque : ${free_mb}MB disponibles"
+  fi
+
+  # 2. PostgreSQL accessible
+  if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -q 2>/dev/null; then
+    success "PostgreSQL accessible"
+  else
+    error "PostgreSQL inaccessible (host: $DB_HOST:$DB_PORT, user: $DB_USER)"
+    failed=1
+  fi
+
+  # 3. Remote upstream configuré
+  if git remote get-url "$UPSTREAM_REMOTE" &>/dev/null; then
+    success "Remote '$UPSTREAM_REMOTE' configuré : $(git remote get-url $UPSTREAM_REMOTE)"
+  else
+    error "Remote '$UPSTREAM_REMOTE' non configuré"
+    echo "  → Ajoutez-le avec : git remote add upstream https://github.com/openfoodfoundation/openfoodnetwork"
+    failed=1
+  fi
+
+  # 4. Pas de modifications non commitées
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    error "Des modifications non commitées existent dans le dépôt"
+    git status --short
+    echo "  → Commitez ou stashez vos modifications avant de continuer"
+    failed=1
+  else
+    success "Dépôt git propre"
+  fi
+
+  # 5. Fichier .env accessible (symlink vers KESCOMMINGES/.env)
+  if [ -f "$APP_DIR/.env" ]; then
+    success "Fichier .env accessible"
+  else
+    error ".env introuvable ou lien symbolique cassé"
+    echo "  → Vérifiez que KESCOMMINGES/.env existe et que le symlink est correct"
+    failed=1
+  fi
+
+  # 6. sudo disponible pour systemctl
+  if sudo -n systemctl is-active "$PUMA_SERVICE" &>/dev/null || \
+     sudo -n systemctl status "$PUMA_SERVICE" &>/dev/null; then
+    success "Droits sudo sur systemctl pour $PUMA_SERVICE"
+  else
+    warn "Impossible de vérifier le service '$PUMA_SERVICE' via sudo"
+    warn "Vérifiez la configuration /etc/sudoers.d/deploy-ofn"
+  fi
+
+  if [ $failed -ne 0 ]; then
+    echo ""
+    error "Des vérifications ont échoué. Corrigez les erreurs ci-dessus avant de continuer."
+    exit 1
+  fi
+
+  echo ""
+}
+
+# =============================================================================
+# ── SAUVEGARDE BASE DE DONNÉES ───────────────────────────────────────────────
+# =============================================================================
+
+backup_database() {
+  local label="${1:-pre-deploy}"
+  local backup_file="$BACKUP_DIR/${label}-$(date +%Y%m%d-%H%M%S).sql.gz"
+
+  log "Sauvegarde de la base de données → $backup_file"
+
+  local start
+  start=$(date +%s)
+
+  if PGPASSWORD="${OFN_DB_PASSWORD:-}" pg_dump \
+      -h "$DB_HOST" \
+      -p "$DB_PORT" \
+      -U "$DB_USER" \
+      "$DB_NAME" \
+      | gzip -9 > "$backup_file"; then
+
+    local size
+    size=$(du -sh "$backup_file" | cut -f1)
+    success "Sauvegarde OK : $backup_file ($size) en $(elapsed $start)"
+  else
+    error "Échec de la sauvegarde PostgreSQL"
+    rm -f "$backup_file"
+    return 1
+  fi
+
+  # Conserver uniquement les N derniers backups
+  local count
+  count=$(ls -1 "$BACKUP_DIR"/*.sql.gz 2>/dev/null | wc -l)
+  if [ "$count" -gt "$BACKUP_KEEP" ]; then
+    local to_delete=$(( count - BACKUP_KEEP ))
+    ls -1t "$BACKUP_DIR"/*.sql.gz | tail -n "$to_delete" | while read -r f; do
+      rm -f "$f"
+      log "Ancien backup supprimé : $f"
+    done
+  fi
+
+  echo "$backup_file"
+}
+
+# =============================================================================
+# ── GESTION RUBY + NODE ──────────────────────────────────────────────────────
+# =============================================================================
+
+ensure_ruby() {
+  local required
+  required=$(cat "$APP_DIR/.ruby-version" | tr -d '[:space:]')
+  local current
+  current=$(rbenv version-name 2>/dev/null || echo "none")
+
+  if [ "$current" = "$required" ]; then
+    success "Ruby $required déjà actif"
+    return 0
+  fi
+
+  if rbenv versions --bare 2>/dev/null | grep -qx "$required"; then
+    success "Ruby $required disponible dans rbenv"
+  else
+    warn "Ruby $required non installé — installation en cours..."
+    log "Mise à jour de ruby-build..."
+    if [ -d "$(rbenv root)/plugins/ruby-build" ]; then
+      git -C "$(rbenv root)/plugins/ruby-build" pull --quiet
+    else
+      error "ruby-build introuvable dans $(rbenv root)/plugins/"
+      error "Installez-le : git clone https://github.com/rbenv/ruby-build.git \$(rbenv root)/plugins/ruby-build"
+      return 1
+    fi
+
+    log "Installation de Ruby $required (peut prendre plusieurs minutes)..."
+    local start
+    start=$(date +%s)
+    if rbenv install "$required"; then
+      success "Ruby $required installé en $(elapsed $start)"
+    else
+      error "Échec de l'installation de Ruby $required"
+      return 1
+    fi
+  fi
+
+  # Vérifier que bundler est à jour pour la nouvelle version
+  rbenv shell "$required"
+  log "Mise à jour de bundler..."
+  gem install bundler --quiet
+}
+
+ensure_node() {
+  # nvm doit avoir été chargé dans init_env
+  if ! command -v nvm &>/dev/null; then
+    warn "nvm non disponible — Node non vérifié"
+    return 0
+  fi
+
+  # Lire la version requise depuis .nvmrc (prioritaire) ou .node-version
+  local required
+  if [ -f "$APP_DIR/.nvmrc" ]; then
+    required=$(cat "$APP_DIR/.nvmrc" | tr -d '[:space:]')
+  elif [ -f "$APP_DIR/.node-version" ]; then
+    required=$(cat "$APP_DIR/.node-version" | tr -d '[:space:]')
+  else
+    warn "Ni .nvmrc ni .node-version trouvé — Node non vérifié"
+    return 0
+  fi
+
+  local current
+  current=$(node --version 2>/dev/null | tr -d 'v[:space:]' || echo "none")
+
+  if [ "$current" = "$required" ]; then
+    success "Node $required déjà actif"
+    return 0
+  fi
+
+  # Vérifier si la version est déjà installée dans nvm
+  if nvm ls "$required" --no-colors 2>/dev/null | grep -q "$required"; then
+    log "Activation de Node $required..."
+    nvm use "$required"
+    success "Node $required actif"
+  else
+    warn "Node $required non installé — installation via nvm..."
+    local start
+    start=$(date +%s)
+    if nvm install "$required"; then
+      nvm use "$required"
+      success "Node $required installé et activé en $(elapsed $start)"
+    else
+      error "Échec de l'installation de Node $required"
+      return 1
+    fi
+  fi
+}
+
+# =============================================================================
+# ── ANALYSE DES MIGRATIONS ───────────────────────────────────────────────────
+# =============================================================================
+
+# Liste les fichiers de migration non encore appliqués en base
+pending_migrations() {
+  bundle exec rails db:migrate:status RAILS_ENV="$RAILS_ENV" 2>/dev/null \
+    | grep '^\s*down' \
+    | awk '{print $3}' \
+    | while read -r ts; do
+        find db/migrate -name "${ts}_*.rb" 2>/dev/null | head -1
+      done
+}
+
+# Détecte si une liste de fichiers de migration contient des opérations destructives
+has_destructive_migrations() {
+  local files=("$@")
+  for f in "${files[@]}"; do
+    if grep -qiE 'drop_table|remove_column|remove_index|execute.*DROP' "$f" 2>/dev/null; then
+      echo "$f"
+    fi
+  done
+}
+
+# =============================================================================
+# ── COMMANDE : UPDATE ────────────────────────────────────────────────────────
+# =============================================================================
+
+cmd_update() {
+  # ── Résoudre la cible (tag, branche kesco, ou upstream) ────────────────────
+  local target_ref target_label
+
+  if [ "$UPDATE_STRATEGY" = "kesco_branch" ]; then
+    header "Mise à jour depuis $ORIGIN_REMOTE/$KESCO_BRANCH"
+    header "(Architecture zéro conflit rebase — commits Kescomminges autonomes)"
+    log "Récupération des commits depuis origin..."
+    git fetch "$ORIGIN_REMOTE" "$KESCO_BRANCH" --quiet
+    target_ref="$ORIGIN_REMOTE/$KESCO_BRANCH"
+    target_label="branche $ORIGIN_REMOTE/$KESCO_BRANCH"
+    success "Fetch terminé"
+  elif [ "$UPDATE_STRATEGY" = "tag" ]; then
+    header "Mise à jour vers le dernier tag stable upstream"
+    log "Récupération des tags upstream..."
+    git fetch "$UPSTREAM_REMOTE" --tags --quiet
+    # Dernier tag trié par version sémantique
+    target_ref=$(git tag --sort=-version:refname \
+                   | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+                   | head -1)
+    if [ -z "$target_ref" ]; then
+      error "Aucun tag de version trouvé sur $UPSTREAM_REMOTE"
+      exit 1
+    fi
+    target_label="tag $target_ref"
+    success "Fetch terminé — dernier tag : $target_ref"
+  else
+    header "Mise à jour depuis $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+    log "Récupération des commits upstream..."
+    git fetch "$UPSTREAM_REMOTE" "$UPSTREAM_BRANCH" --quiet
+    target_ref="$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+    target_label="branche $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+    success "Fetch terminé"
+  fi
+
+  # ── Version actuellement déployée ──────────────────────────────────────────
+  local current_tag
+  current_tag=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "(aucun tag)")
+
+  # ── Analyse des changements ─────────────────────────────────────────────────
+  local commit_count
+  commit_count=$(git rev-list HEAD.."$target_ref" --count)
+
+  if [ "$commit_count" -eq 0 ]; then
+    success "Déjà à jour sur $target_label."
+    echo ""
+    if confirm "Lancer quand même le déploiement (bundle, assets, migrations, restart) ?"; then
+      cmd_deploy
+    else
+      log "Opération annulée."
+    fi
+    exit 0
+  fi
+
+  echo ""
+  echo -e "${BOLD}Version actuelle :${NC} $current_tag  →  ${BOLD}Cible :${NC} $target_label"
+  echo ""
+  echo -e "${BOLD}${commit_count} commit(s) à intégrer :${NC}"
+  echo ""
+  git log HEAD.."$target_ref" \
+    --oneline \
+    --color=always \
+    --max-count=30
+  if [ "$commit_count" -gt 30 ]; then
+    echo "  ... et $(( commit_count - 30 )) autres commits"
+  fi
+
+  # ── Fichiers modifiés ───────────────────────────────────────────────────────
+  echo ""
+  echo -e "${BOLD}Fichiers modifiés :${NC}"
+  git diff --stat HEAD.."$target_ref" | tail -1
+
+  # ── Changements Ruby/Node ───────────────────────────────────────────────────
+  local new_ruby cur_ruby
+  new_ruby=$(git show "$target_ref:.ruby-version" 2>/dev/null | tr -d '[:space:]')
+  cur_ruby=$(cat .ruby-version | tr -d '[:space:]')
+  if [ -n "$new_ruby" ] && [ "$new_ruby" != "$cur_ruby" ]; then
+    warn "Changement de version Ruby : $cur_ruby → $new_ruby"
+    warn "Ruby $new_ruby sera installé automatiquement via rbenv"
+  fi
+
+  local new_node cur_node
+  new_node=$(git show "$target_ref:.node-version" 2>/dev/null | tr -d '[:space:]')
+  cur_node=$(cat .nvmrc 2>/dev/null || cat .node-version 2>/dev/null || echo "")
+  cur_node=$(echo "$cur_node" | tr -d '[:space:]')
+  if [ -n "$new_node" ] && [ "$new_node" != "$cur_node" ]; then
+    warn "Changement de version Node : $cur_node → $new_node"
+    warn "Node $new_node sera installé automatiquement via nvm"
+  fi
+
+  # ── Nouvelles migrations ────────────────────────────────────────────────────
+  local new_migrations
+  new_migrations=$(git diff --name-only HEAD.."$target_ref" \
+                   | grep '^db/migrate/' || true)
+  if [ -n "$new_migrations" ]; then
+    echo ""
+    echo -e "${BOLD}Nouvelles migrations :${NC}"
+    echo "$new_migrations" | while read -r f; do
+      local content
+      content=$(git show "$target_ref:$f" 2>/dev/null || true)
+      if echo "$content" | grep -qiE 'drop_table|remove_column|remove_index|execute.*DROP'; then
+        echo -e "  ${RED}⚠ DROP${NC}  $f"
+      else
+        echo "       $f"
+      fi
+    done
+  fi
+
+  # ── Conflits potentiels avec nos fichiers custom ────────────────────────────
+  local custom_files=(
+    "config/locales/fr.yml"
+    "config/locales/en.yml"
+    "app/models/spree/app_configuration.rb"
+    "app/views/layouts/darkswarm.html.haml"
+    "app/views/layouts/registration.html.haml"
+    "app/views/spree/layouts/_admin_body.html.haml"
+    "app/views/spree/admin/shared/_configuration_menu.html.haml"
+    "app/webpacker/packs/application.js"
+    "app/webpacker/packs/admin.js"
+    "config/routes/admin.rb"
+  )
+  local touched_custom=""
+  for f in "${custom_files[@]}"; do
+    if git diff --name-only HEAD.."$target_ref" 2>/dev/null | grep -qx "$f"; then
+      touched_custom="$touched_custom\n  ⚠  $f"
+    fi
+  done
+  if [ -n "$touched_custom" ]; then
+    echo ""
+    warn "Ces fichiers custom sont modifiés par upstream (conflits possibles au rebase) :"
+    echo -e "$touched_custom"
+  fi
+
+  # ── Confirmation ────────────────────────────────────────────────────────────
+  echo ""
+  if ! confirm "Mettre à jour vers $target_label et déployer ?"; then
+    log "Opération annulée."
+    exit 0
+  fi
+
+  # ── Sauvegarde BDD ──────────────────────────────────────────────────────────
+  header "Sauvegarde pré-déploiement"
+  local backup_file
+  backup_file=$(backup_database "pre-update")
+  echo ""
+
+  # ── Sauvegarde du commit courant pour rollback ──────────────────────────────
+  local current_commit
+  current_commit=$(git rev-parse HEAD)
+  {
+    echo "COMMIT=$current_commit"
+    echo "DATE=$(date +%s)"
+    echo "BACKUP=$backup_file"
+  } > "$ROLLBACK_FILE"
+
+  # ── Rebase sur le tag / la branche cible ────────────────────────────────────
+  header "Rebase sur $target_label"
+  log "git rebase $target_ref..."
+
+  if ! git rebase "$target_ref"; then
+    echo ""
+    error "CONFLIT lors du rebase — opération annulée."
+    git rebase --abort 2>/dev/null || true
+    echo ""
+    echo "  Pour résoudre manuellement :"
+    echo "    git rebase $target_ref"
+    echo "    # résoudre les conflits dans chaque fichier"
+    echo "    git add <fichier_résolu>"
+    echo "    git rebase --continue"
+    echo "  Puis relancez : bin/deploy deploy"
+    logfile "ÉCHEC update — conflit rebase sur $target_label"
+    exit 1
+  fi
+
+  success "Rebase appliqué — $(git rev-list --count "$current_commit"..HEAD) commits intégrés"
+
+  # ── S'assurer que le symlink .env est intact après le rebase ────────────────
+  ensure_env_symlinks
+
+  # ── Push sur le fork ────────────────────────────────────────────────────────
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  log "Push sur $ORIGIN_REMOTE/$current_branch..."
+  if git push "$ORIGIN_REMOTE" "$current_branch" --force-with-lease --quiet; then
+    success "Fork mis à jour"
+  else
+    warn "Push sur $ORIGIN_REMOTE échoué (non bloquant)"
+  fi
+
+  # ── Enchaîner sur deploy ────────────────────────────────────────────────────
+  cmd_deploy
+}
+
+# =============================================================================
+# ── COMMANDE : DEPLOY ────────────────────────────────────────────────────────
+# =============================================================================
+
+cmd_deploy() {
+  local deploy_start
+  deploy_start=$(date +%s)
+  local deploy_commit
+  deploy_commit=$(git rev-parse --short HEAD)
+
+  header "Déploiement du commit $deploy_commit"
+
+  # Sauvegarde du commit courant si pas déjà fait (deploy seul sans update)
+  if [ ! -f "$ROLLBACK_FILE" ]; then
+    local current_commit
+    current_commit=$(git rev-parse HEAD)
+
+    # Sauvegarde BDD
+    header "Sauvegarde pré-déploiement"
+    local backup_file
+    backup_file=$(backup_database "pre-deploy")
+    echo ""
+
+    {
+      echo "COMMIT=$current_commit"
+      echo "DATE=$(date +%s)"
+      echo "BACKUP=$backup_file"
+    } > "$ROLLBACK_FILE"
+  fi
+
+  # ── Ruby ────────────────────────────────────────────────────────────────────
+  header "Vérification Ruby"
+  if ! ensure_ruby; then
+    error "Impossible de configurer Ruby"
+    exit 1
+  fi
+  echo ""
+
+  # ── Node ────────────────────────────────────────────────────────────────────
+  header "Vérification Node"
+  if ! ensure_node; then
+    error "Impossible de configurer Node"
+    exit 1
+  fi
+  echo ""
+
+  # ── Bundle install ──────────────────────────────────────────────────────────
+  header "Installation des gems (bundle install)"
+  local start
+  start=$(date +%s)
+  if bundle config set --local without 'development test' && bundle install --jobs 4 --retry 3; then
+    success "bundle install terminé en $(elapsed $start)"
+  else
+    error "bundle install a échoué"
+    _do_rollback
+    exit 1
+  fi
+  echo ""
+
+  # ── Yarn install ────────────────────────────────────────────────────────────
+  header "Installation des packages JS (yarn install)"
+  start=$(date +%s)
+  if yarn install --frozen-lockfile --silent; then
+    success "yarn install terminé en $(elapsed $start)"
+  else
+    error "yarn install a échoué"
+    _do_rollback
+    exit 1
+  fi
+  echo ""
+
+  # ── Migrations ──────────────────────────────────────────────────────────────
+  header "Migrations de base de données"
+  local pending_files=()
+  while IFS= read -r line; do
+    [ -n "$line" ] && pending_files+=("$line")
+  done < <(pending_migrations)
+
+  if [ ${#pending_files[@]} -eq 0 ]; then
+    success "Aucune migration en attente"
+  else
+    echo "${#pending_files[@]} migration(s) à appliquer :"
+    for f in "${pending_files[@]}"; do
+      echo "  • $(basename "$f")"
+    done
+
+    # Détecter migrations destructives
+    local destructive=()
+    while IFS= read -r line; do
+      [ -n "$line" ] && destructive+=("$line")
+    done < <(has_destructive_migrations "${pending_files[@]}")
+
+    if [ ${#destructive[@]} -gt 0 ]; then
+      echo ""
+      warn "ATTENTION — Migrations potentiellement destructives (DROP/REMOVE) :"
+      for f in "${destructive[@]}"; do
+        echo -e "  ${RED}⚠${NC}  $(basename "$f")"
+      done
+      echo ""
+      if ! confirm "Confirmer l'exécution de ces migrations ?" "strict"; then
+        error "Migrations annulées."
+        _do_rollback
+        exit 1
+      fi
+    fi
+
+    start=$(date +%s)
+    if bundle exec rails db:migrate RAILS_ENV="$RAILS_ENV"; then
+      success "Migrations appliquées en $(elapsed $start)"
+      echo "MIGRATIONS_APPLIED=true" >> "$ROLLBACK_FILE"
+    else
+      error "Migrations échouées"
+      _do_rollback
+      exit 1
+    fi
+  fi
+  echo ""
+
+  # ── Pages légales (Markdown → HAML) ─────────────────────────────────────────
+  header "Génération des pages légales (legal:build)"
+  start=$(date +%s)
+  if bundle exec rails legal:build RAILS_ENV="$RAILS_ENV"; then
+    success "legal:build terminé en $(elapsed $start)"
+  else
+    warn "legal:build a échoué (non bloquant — pages légales non mises à jour)"
+  fi
+  echo ""
+
+  # ── Génération variables SCSS depuis variables.yml ───────────────────────────
+  header "Génération des variables SCSS Kescomminges"
+  if [[ -f "$APP_DIR/KESCOMMINGES/variables.yml" ]]; then
+    if ruby "$APP_DIR/bin/generate_scss_vars"; then
+      success "Variables SCSS générées depuis KESCOMMINGES/variables.yml"
+    else
+      warn "generate_scss_vars a échoué — utilisation du fichier existant _kescomminges_vars.scss"
+    fi
+  else
+    warn "KESCOMMINGES/variables.yml introuvable — utilisation du fichier existant _kescomminges_vars.scss"
+    warn "  (cloner github.com/kescomminges/KESCOMMINGES dans $APP_DIR/KESCOMMINGES pour activer)"
+  fi
+  echo ""
+
+  # ── Assets precompile ────────────────────────────────────────────────────────
+  header "Compilation des assets (assets:precompile)"
+  start=$(date +%s)
+  if bundle exec rails assets:precompile RAILS_ENV="$RAILS_ENV"; then
+    success "assets:precompile terminé en $(elapsed $start)"
+  else
+    error "assets:precompile a échoué"
+    _do_rollback
+    exit 1
+  fi
+  echo ""
+
+  # ── Restart services ────────────────────────────────────────────────────────
+  header "Redémarrage des services"
+
+  # Puma — on essaie reload d'abord (zero-downtime), sinon restart
+  if sudo systemctl reload "$PUMA_SERVICE" 2>/dev/null; then
+    success "Puma rechargé (reload)"
+  elif sudo systemctl restart "$PUMA_SERVICE"; then
+    success "Puma redémarré"
+  else
+    error "Échec du redémarrage de Puma"
+    _do_rollback
+    exit 1
+  fi
+
+  if sudo systemctl restart "$SIDEKIQ_SERVICE"; then
+    success "Sidekiq redémarré"
+  else
+    warn "Échec du redémarrage de Sidekiq (non bloquant)"
+  fi
+  echo ""
+
+  # ── Health check ────────────────────────────────────────────────────────────
+  header "Vérification de l'application"
+  log "Attente du démarrage de Puma (preload_app prend 60-90s)..."
+  sleep 60
+
+  local ok=0
+  for i in $(seq 1 "$HEALTH_CHECK_RETRIES"); do
+    if curl -sf "$HEALTH_CHECK_URL" -o /dev/null 2>/dev/null; then
+      ok=1
+      break
+    fi
+    log "Tentative $i/$HEALTH_CHECK_RETRIES — en attente..."
+    sleep "$HEALTH_CHECK_WAIT"
+  done
+
+  if [ $ok -eq 0 ]; then
+    error "Health check échoué après $HEALTH_CHECK_RETRIES tentatives"
+    error "Rollback automatique..."
+    _do_rollback
+    logfile "ÉCHEC deploy $deploy_commit — health check"
+    exit 1
+  fi
+
+  success "Application opérationnelle : $HEALTH_CHECK_URL"
+  echo ""
+
+  # ── Finalisation ────────────────────────────────────────────────────────────
+  # Nettoyer le fichier de rollback (deploy réussi)
+  rm -f "$ROLLBACK_FILE"
+
+  local total
+  total=$(elapsed "$deploy_start")
+  local msg="OK deploy $deploy_commit en $total"
+
+  echo -e "${GREEN}${BOLD}"
+  echo "  ╔══════════════════════════════════════════════════╗"
+  echo "  ║  ✔  Déploiement terminé avec succès              ║"
+  echo "  ║     Commit : $deploy_commit                           ║"
+  echo "  ║     Durée  : $total                               ║"
+  echo "  ╚══════════════════════════════════════════════════╝"
+  echo -e "${NC}"
+
+  logfile "$msg"
+}
+
+# =============================================================================
+# ── ROLLBACK INTERNE (appelé en cas d'échec) ─────────────────────────────────
+# =============================================================================
+
+_do_rollback() {
+  if [ ! -f "$ROLLBACK_FILE" ]; then
+    warn "Pas de fichier de rollback trouvé — rollback impossible"
+    return 1
+  fi
+
+  local rollback_commit
+  rollback_commit=$(grep '^COMMIT=' "$ROLLBACK_FILE" | cut -d= -f2)
+  local backup_file
+  backup_file=$(grep '^BACKUP=' "$ROLLBACK_FILE" | cut -d= -f2)
+  local migrations_applied
+  migrations_applied=$(grep 'MIGRATIONS_APPLIED=true' "$ROLLBACK_FILE" || true)
+
+  warn "Rollback vers le commit : $(git rev-parse --short "$rollback_commit")"
+  git reset --hard "$rollback_commit"
+
+  # Rollback des assets
+  ruby "$APP_DIR/bin/generate_scss_vars" 2>/dev/null || true
+  bundle exec rails assets:precompile RAILS_ENV="$RAILS_ENV" --quiet 2>/dev/null || true
+
+  # Restart services
+  sudo systemctl restart "$PUMA_SERVICE" 2>/dev/null || true
+  sudo systemctl restart "$SIDEKIQ_SERVICE" 2>/dev/null || true
+
+  if [ -n "$migrations_applied" ]; then
+    echo ""
+    warn "Des migrations avaient été appliquées. Le rollback de schéma BDD"
+    warn "doit être fait MANUELLEMENT pour éviter toute perte de données."
+    echo ""
+    echo "  Backup disponible : $backup_file"
+    echo "  Pour restaurer :"
+    echo "    zcat '$backup_file' | psql -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME"
+    echo "  Ou rollback de la dernière migration :"
+    echo "    bundle exec rails db:rollback RAILS_ENV=$RAILS_ENV"
+  fi
+
+  logfile "ROLLBACK vers $rollback_commit"
+}
+
+# =============================================================================
+# ── COMMANDE : ROLLBACK (manuel) ─────────────────────────────────────────────
+# =============================================================================
+
+cmd_rollback() {
+  header "Rollback manuel"
+
+  if [ ! -f "$ROLLBACK_FILE" ]; then
+    error "Aucune donnée de rollback disponible ($ROLLBACK_FILE introuvable)"
+    echo "  Le fichier de rollback est créé automatiquement à chaque deploy."
+    exit 1
+  fi
+
+  local rollback_commit
+  rollback_commit=$(grep '^COMMIT=' "$ROLLBACK_FILE" | cut -d= -f2)
+  local rollback_date
+  rollback_date=$(grep '^DATE=' "$ROLLBACK_FILE" | cut -d= -f2)
+  local backup_file
+  backup_file=$(grep '^BACKUP=' "$ROLLBACK_FILE" | cut -d= -f2)
+  local migrations_applied
+  migrations_applied=$(grep 'MIGRATIONS_APPLIED=true' "$ROLLBACK_FILE" || true)
+
+  echo "Commit cible      : $(git log --oneline -1 "$rollback_commit")"
+  echo "Deploy précédent  : $(date -d "@$rollback_date" '+%Y-%m-%d %H:%M:%S' 2>/dev/null \
+                              || date -r "$rollback_date" '+%Y-%m-%d %H:%M:%S' 2>/dev/null \
+                              || echo "$rollback_date")"
+  echo "Backup BDD        : $backup_file"
+
+  if [ -n "$migrations_applied" ]; then
+    echo ""
+    warn "Des migrations ont été appliquées lors du dernier deploy."
+    warn "Le rollback du schéma BDD devra être fait manuellement."
+  fi
+
+  echo ""
+  if ! confirm "Confirmer le rollback vers ce commit ?"; then
+    log "Rollback annulé."
+    exit 0
+  fi
+
+  _do_rollback
+  success "Rollback terminé"
+  logfile "ROLLBACK MANUEL vers $rollback_commit"
+}
+
+# =============================================================================
+# ── COMMANDE : REBASE-UPSTREAM ───────────────────────────────────────────────
+# =============================================================================
+# Mise à jour depuis upstream/master avec rebase minimal
+# (pour les mises à jour majeures OFN)
+
+cmd_rebase_upstream() {
+  header "Rebase depuis $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+  header "(Stratégie : 8 commits Kescomminges atomiques, zéro conflit)"
+
+  log "Récupération des commits upstream..."
+  git fetch "$UPSTREAM_REMOTE" "$UPSTREAM_BRANCH" --quiet
+  success "Fetch terminé"
+
+  # Vérifier si on est sur la branche kesco_custom2
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  if [ "$current_branch" != "$KESCO_BRANCH" ]; then
+    error "Vous devez être sur la branche $KESCO_BRANCH pour faire un rebase"
+    error "Branche actuelle : $current_branch"
+    exit 1
+  fi
+
+  echo ""
+  log "Commits à intégrer depuis $UPSTREAM_REMOTE/$UPSTREAM_BRANCH :"
+  local commit_count
+  commit_count=$(git rev-list HEAD.."$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" --count)
+  echo "  ${commit_count} commit(s)"
+  echo ""
+
+  if [ "$commit_count" -eq 0 ]; then
+    success "Déjà à jour."
+    exit 0
+  fi
+
+  git log HEAD.."$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" \
+    --oneline \
+    --color=always \
+    --max-count=20
+  if [ "$commit_count" -gt 20 ]; then
+    echo "  ... et $(( commit_count - 20 )) autres commits"
+  fi
+
+  echo ""
+  warn "⚠  Le rebase peut créer des conflits dans les fichiers personnalisés Kescomminges"
+  warn "    Les fichiers à risque sont listés dans CLAUDE.md"
+  warn ""
+  warn "    Fichiers Kescomminges susceptibles de conflits :"
+  warn "      - config/locales/en.yml (plausible_settings section)"
+  warn "      - app/webpacker/css/darkswarm/all.scss (kescomminges_vars import)"
+  warn "      - app/views/layouts/*.html.haml (plausible_tag render)"
+  warn "      - app/views/spree/admin/shared/_configuration_menu.html.haml"
+  echo ""
+
+  if ! confirm "Lancer le rebase depuis $UPSTREAM_REMOTE/$UPSTREAM_BRANCH ?"; then
+    log "Rebase annulé"
+    exit 0
+  fi
+
+  # Backup avant rebase
+  log "Sauvegarde de la base de données..."
+  backup_database "pre-rebase-upstream"
+  success "Backup créé"
+
+  # Rebase
+  log "Rebase en cours..."
+  if ! git rebase "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"; then
+    error "ERREUR : Rebase interrompu par un conflit"
+    error "Résoudre les conflits manuellement :"
+    error "  git status  # Voir les fichiers en conflit"
+    error "  <editez les fichiers en conflit>"
+    error "  git add <fichiers résolus>"
+    error "  git rebase --continue"
+    error ""
+    error "Ou pour annuler le rebase :"
+    error "  git rebase --abort"
+    logfile "REBASE-UPSTREAM ÉCHOUÉ — conflits non résolus"
+    exit 1
+  fi
+
+  success "Rebase terminé sans conflit !"
+  log "Push vers origin/$KESCO_BRANCH ..."
+  git push "$ORIGIN_REMOTE" "$KESCO_BRANCH" --force-with-lease
+  success "Push effectué"
+
+  logfile "REBASE-UPSTREAM OK — $commit_count commit(s) intégrés"
+  echo ""
+  log "Prochaine étape : bin/deploy update"
+}
+
+# =============================================================================
+# ── COMMANDE : BACKUP ────────────────────────────────────────────────────────
+# =============================================================================
+
+cmd_backup() {
+  header "Sauvegarde manuelle de la base de données"
+  local backup_file
+  backup_file=$(backup_database "manual")
+  echo ""
+  success "Sauvegarde disponible dans : $BACKUP_DIR"
+  ls -lh "$BACKUP_DIR"/*.sql.gz 2>/dev/null || true
+}
+
+# =============================================================================
+# ── COMMANDE : STATUS ────────────────────────────────────────────────────────
+# =============================================================================
+
+cmd_status() {
+  header "État de l'instance Kescomminges OFN"
+
+  # Commit / tag courant
+  local current_tag
+  current_tag=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "(aucun tag)")
+  echo -e "${BOLD}Version déployée :${NC} $current_tag"
+  git log --oneline -3
+  echo ""
+
+  # Comparaison avec le dernier tag stable upstream
+  git fetch "$UPSTREAM_REMOTE" --tags --quiet 2>/dev/null || true
+  local latest_tag
+  latest_tag=$(git tag --sort=-version:refname \
+                 | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+                 | head -1)
+  if [ -z "$latest_tag" ]; then
+    warn "Impossible de récupérer les tags upstream"
+  elif [ "$current_tag" = "$latest_tag" ]; then
+    success "À jour — dernier tag upstream : $latest_tag"
+  else
+    local behind
+    behind=$(git rev-list HEAD.."$latest_tag" --count 2>/dev/null || echo "?")
+    warn "Mise à jour disponible : $current_tag → $latest_tag ($behind commits)"
+  fi
+  echo ""
+
+  # Versions
+  echo -e "${BOLD}Versions :${NC}"
+  echo "  Ruby   : $(ruby --version 2>/dev/null || echo 'non disponible')"
+  echo "  Node   : $(node --version 2>/dev/null || echo 'non disponible') (nvm)"
+  echo "  Bundle : $(bundle --version 2>/dev/null || echo 'non disponible')"
+  echo ""
+
+  # Services systemd
+  echo -e "${BOLD}Services systemd :${NC}"
+  for service in "$PUMA_SERVICE" "$SIDEKIQ_SERVICE"; do
+    if sudo systemctl is-active "$service" --quiet 2>/dev/null; then
+      echo -e "  ${GREEN}●${NC}  $service — actif"
+    else
+      echo -e "  ${RED}●${NC}  $service — inactif"
+    fi
+  done
+  echo ""
+
+  # Health check HTTP
+  echo -e "${BOLD}Health check HTTP :${NC}"
+  if curl -sf "$HEALTH_CHECK_URL" -o /dev/null 2>/dev/null; then
+    success "$HEALTH_CHECK_URL répond"
+  else
+    error "$HEALTH_CHECK_URL ne répond pas"
+  fi
+  echo ""
+
+  # Backups disponibles
+  echo -e "${BOLD}Derniers backups BDD :${NC}"
+  if ls "$BACKUP_DIR"/*.sql.gz &>/dev/null; then
+    ls -lht "$BACKUP_DIR"/*.sql.gz | head -5 | awk '{print "  " $5 "  " $6 " " $7 " " $8 "  " $9}'
+  else
+    echo "  Aucun backup trouvé dans $BACKUP_DIR"
+  fi
+  echo ""
+
+  # Derniers déploiements
+  echo -e "${BOLD}Derniers déploiements :${NC}"
+  if [ -f "$LOG_FILE" ]; then
+    tail -10 "$LOG_FILE" | awk '{print "  " $0}'
+  else
+    echo "  Aucun log trouvé"
+  fi
+}
+
+# =============================================================================
+# ── COMMANDE : HELP ──────────────────────────────────────────────────────────
+# =============================================================================
+
+cmd_help() {
+  cat <<EOF
+
+${BOLD}bin/deploy${NC} — Script de déploiement Kescomminges OFN
+
+${BOLD}USAGE${NC}
+  bin/deploy <commande> [--env dev]
+
+${BOLD}OPTION${NC}
+  --env dev   Cible l'instance dev (dev.kescomminges.fr, port 3001,
+              répertoire openfoodnetwork-dev, BDD open_food_network_dev).
+              Sans cette option, cible la prod (défaut).
+
+${BOLD}COMMANDES${NC}
+  update    Récupère le dernier tag stable depuis upstream, affiche les
+            changements, demande confirmation, effectue le rebase, déploie.
+            Workflow recommandé : tester sur --env dev avant la prod.
+
+  deploy    Déploie le code courant sans toucher à git.
+            Enchaîne : Ruby/Node check → bundle → yarn → migrations → assets → restart
+
+  rollback  Revient au commit sauvegardé avant le dernier déploiement.
+            Un backup BDD est toujours créé avant chaque deploy.
+            Note : le rollback de schéma BDD reste manuel (sécurité).
+
+  backup    Lance uniquement une sauvegarde de la base de données PostgreSQL.
+            Les backups sont stockés dans : $BACKUP_DIR
+
+  status    Affiche l'état courant : commit déployé, retard upstream,
+            état des services systemd, derniers backups et déploiements.
+
+  help      Affiche cette aide.
+
+${BOLD}CONFIGURATION ACTIVE${NC} (env: $DEPLOY_ENV)
+    APP_DIR         : $APP_DIR
+    PUMA_SERVICE    : $PUMA_SERVICE
+    SIDEKIQ_SERVICE : $SIDEKIQ_SERVICE
+    BACKUP_DIR      : $BACKUP_DIR
+    DB_NAME         : $DB_NAME
+    HEALTH_CHECK    : $HEALTH_CHECK_URL
+
+${BOLD}SUDO REQUIS${NC}
+  Ajoutez dans /etc/sudoers.d/deploy-ofn :
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart puma-ofn-dev
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl reload puma-ofn-dev
+    kescomminges ALL=(root) NOPASSWD: /bin/systemctl restart sidekiq-ofn-dev
+
+${BOLD}EXEMPLES${NC}
+  bin/deploy status                # État prod
+  bin/deploy status --env dev      # État dev
+  bin/deploy update --env dev      # Mettre à jour le site de dev en premier
+  bin/deploy update                # Mettre à jour la prod après validation dev
+  bin/deploy backup           # Sauvegarde manuelle avant une opération risquée
+  bin/deploy deploy           # Redéployer après un fix manuel
+  bin/deploy rollback         # En cas de problème après un deploy
+
+EOF
+}
+
+# =============================================================================
+# ── POINT D'ENTRÉE ───────────────────────────────────────────────────────────
+# =============================================================================
+
+# Initialiser l'environnement (rbenv, nodenv, cd APP_DIR)
+init_env
+
+# Dispatcher
+case "${1:-help}" in
+  update)           cmd_update   ;;
+  deploy)           cmd_deploy   ;;
+  rollback)         cmd_rollback ;;
+  rebase-upstream)  cmd_rebase_upstream ;;
+  backup)           cmd_backup   ;;
+  status)           cmd_status   ;;
+  help|--help|-h)   cmd_help ;;
+  *)
+    error "Commande inconnue : $1"
+    cmd_help
+    exit 1
+    ;;
+esac
