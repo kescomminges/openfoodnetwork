@@ -1,0 +1,21 @@
+%p
+  Nouveau message reçu via le formulaire de contact de
+  = link_to "kescomminges.fr", root_url
+
+%table{style: "border-collapse: collapse; width: 100%; margin-top: 16px;"}
+  %tr
+    %td{style: "padding: 8px; font-weight: bold; background: #f5f5f5; border: 1px solid #ddd; width: 140px;"} Nom
+    %td{style: "padding: 8px; border: 1px solid #ddd;"}= @sender_name
+  %tr
+    %td{style: "padding: 8px; font-weight: bold; background: #f5f5f5; border: 1px solid #ddd;"} Email
+    %td{style: "padding: 8px; border: 1px solid #ddd;"}= @sender_email
+  %tr
+    %td{style: "padding: 8px; font-weight: bold; background: #f5f5f5; border: 1px solid #ddd;"} Sujet
+    %td{style: "padding: 8px; border: 1px solid #ddd;"}= @sender_subject
+  %tr
+    %td{style: "padding: 8px; font-weight: bold; background: #f5f5f5; border: 1px solid #ddd; vertical-align: top;"} Message
+    %td{style: "padding: 8px; border: 1px solid #ddd; white-space: pre-wrap;"}= @message
+
+%p{style: "margin-top: 24px; color: #888; font-size: 0.9em;"}
+  Ce message a été envoyé via le formulaire de contact du site.
+  Pour répondre, utilisez directement l'adresse de l'expéditeur (reply-to).

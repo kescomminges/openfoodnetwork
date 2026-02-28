@@ -1,0 +1,67 @@
+- content_for :title, @title
+
+.legal-page
+  .row
+    .small-12.medium-10.medium-offset-1.large-8.large-offset-2.columns
+
+      %h1= t("contact_page.title")
+      %p= t("contact_page.intro")
+
+      - if flash[:notice]
+        .callout.success
+          = flash[:notice]
+
+      - if flash[:error]
+        .callout.alert
+          = flash[:error]
+
+      = form_tag contact_submit_path, method: :post, class: "contact-form" do
+
+        = invisible_captcha :firstname
+
+        .row
+          .small-12.medium-6.columns
+            %label{for: "contact_name"}
+              = t("contact_page.form.name")
+              %abbr{title: t("contact_page.form.required")} *
+            = text_field_tag :contact_name, params[:contact_name],
+                id: "contact_name",
+                required: true,
+                autocomplete: "name",
+                placeholder: t("contact_page.form.name_placeholder")
+
+          .small-12.medium-6.columns
+            %label{for: "contact_email"}
+              = t("contact_page.form.email")
+              %abbr{title: t("contact_page.form.required")} *
+            = email_field_tag :contact_email, params[:contact_email],
+                id: "contact_email",
+                required: true,
+                autocomplete: "email",
+                placeholder: t("contact_page.form.email_placeholder")
+
+        .row
+          .small-12.columns
+            %label{for: "contact_subject"}
+              = t("contact_page.form.subject")
+            = text_field_tag :contact_subject, params[:contact_subject],
+                id: "contact_subject",
+                placeholder: t("contact_page.form.subject_placeholder")
+
+        .row
+          .small-12.columns
+            %label{for: "contact_message"}
+              = t("contact_page.form.message")
+              %abbr{title: t("contact_page.form.required")} *
+            = text_area_tag :contact_message, params[:contact_message],
+                id: "contact_message",
+                required: true,
+                rows: 7,
+                placeholder: t("contact_page.form.message_placeholder")
+
+        .row
+          .small-12.columns
+            = submit_tag t("contact_page.form.send"), class: "button primary"
+
+      %p.contact-legal
+        = t("contact_page.legal_notice")
