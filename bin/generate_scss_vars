@@ -209,6 +209,11 @@ checkout_order_summary_bg = Color.lighten(principal, 48)  # fond résumé comman
 checkout_dirty_bg         = Color.lighten(troisieme, 32)  # fieldset erreur (teinte troisième)
 checkout_valid_bg         = Color.lighten(principal, 40)  # fieldset valide (teinte principal)
 
+# Dérivées troisième (remplace $clr-turquoise-* OFN)
+lighten_troisieme       = Color.lighten(troisieme, 25)   # $clr-turquoise-light
+ultralighten_troisieme  = Color.lighten(troisieme, 40)   # $clr-turquoise-ultra-light
+brighten_troisieme      = Color.lighten(troisieme, 8)    # $clr-turquoise-bright
+
 # =============================================================================
 # Génération du fichier SCSS
 # =============================================================================
@@ -321,6 +326,11 @@ scss = <<~SCSS
   $clr-blue:        $kesco-principal-500;
   $clr-blue-light:  $kesco-principal-300;
   $clr-blue-bright: $kesco-principal-400;
+
+  $clr-turquoise:             $kesco-troisieme;        // vert tertiaire
+  $clr-turquoise-light:       #{lighten_troisieme};    // fond clair
+  $clr-turquoise-ultra-light: #{ultralighten_troisieme}; // fond très clair
+  $clr-turquoise-bright:      #{brighten_troisieme};   // hover/actif
 
   $orange-400: $kesco-secondaire-400;
   $orange-450: $kesco-secondaire-450;

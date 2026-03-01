@@ -2,7 +2,7 @@
 // _kescomminges_vars.scss — Variables SCSS Kescomminges
 //
 // FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER MANUELLEMENT
-// Généré le : 2026-03-01 12:35
+// Généré le : 2026-03-01 15:28
 // Source    : KESCOMMINGES/variables.yml
 // Script    : bin/generate_scss_vars
 //
@@ -103,6 +103,11 @@ $teal-600: $kesco-principal-600;
 $clr-blue:        $kesco-principal-500;
 $clr-blue-light:  $kesco-principal-300;
 $clr-blue-bright: $kesco-principal-400;
+
+$clr-turquoise:             $kesco-troisieme;        // vert tertiaire
+$clr-turquoise-light:       #8dd0b5;    // fond clair
+$clr-turquoise-ultra-light: #c4e6d8; // fond très clair
+$clr-turquoise-bright:      #50b78d;   // hover/actif
 
 $orange-400: $kesco-secondaire-400;
 $orange-450: $kesco-secondaire-450;
