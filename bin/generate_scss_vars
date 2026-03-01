@@ -327,6 +327,10 @@ scss = <<~SCSS
   $orange-500: $kesco-secondaire-500;
   $orange-600: $kesco-secondaire-600;
 
+  // Variables sémantiques directes
+  $troisieme: $kesco-troisieme;             // couleur tertiaire pour shop/accents
+
+  // Variables OFN remappées
   $ofn-brand:       $kesco-secondaire-500;
   $brand-colour:    $kesco-principal-500;
   $accent-color:    $kesco-troisieme;

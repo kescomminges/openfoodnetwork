@@ -2,7 +2,7 @@
 // _kescomminges_vars.scss — Variables SCSS Kescomminges
 //
 // FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER MANUELLEMENT
-// Généré le : 2026-03-01 12:07
+// Généré le : 2026-03-01 12:24
 // Source    : KESCOMMINGES/variables.yml
 // Script    : bin/generate_scss_vars
 //
@@ -109,6 +109,10 @@ $orange-450: $kesco-secondaire-450;
 $orange-500: $kesco-secondaire-500;
 $orange-600: $kesco-secondaire-600;
 
+// Variables sémantiques directes
+$troisieme: $kesco-troisieme;             // couleur tertiaire pour shop/accents
+
+// Variables OFN remappées
 $ofn-brand:       $kesco-secondaire-500;
 $brand-colour:    $kesco-principal-500;
 $accent-color:    $kesco-troisieme;

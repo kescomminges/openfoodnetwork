@@ -132,10 +132,10 @@
     }
 
     h3 a {
-      color: $orange-500;
+      color: $troisieme;
 
       &:hover, &:focus, &:active {
-        color: $orange-600;
+        color: darken($troisieme, 8%);
         text-decoration: underline;
       }
     }
