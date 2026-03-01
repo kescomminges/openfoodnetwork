@@ -342,7 +342,14 @@ scss = <<~SCSS
   $warning-color:         $kesco-secondaire-400;  // warning
   $info-color:            $kesco-principal-300;   // info
 
-  // Variables OFN remappées
+  // Variables OFN remappées — branding.scss
+  $clr-brick:              $kesco-principal-500;      // couleur brand active
+  $clr-brick-light:        $kesco-principal-300;      // fond clair
+  $clr-brick-light-trans:  rgba($kesco-principal-300, 0.9); // fond semi-transparent
+  $clr-brick-bright:       $kesco-principal-400;      // couleur hover
+  $clr-brick-med-bright:   $kesco-principal-400;      // couleur moyenne
+  $clr-brick-light-bright: $kesco-principal-300;      // couleur très clair
+
   $ofn-brand:       $kesco-secondaire-500;
   $brand-colour:    $kesco-principal-500;
   $accent-color:    $kesco-troisieme;
