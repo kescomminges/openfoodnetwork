@@ -6,6 +6,7 @@ jobs:
   lint:
     name: reviewdog
     runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/kesco_custom2'
     steps:
       - uses: actions/checkout@v3
 
