@@ -330,6 +330,18 @@ scss = <<~SCSS
   // Variables sémantiques directes
   $troisieme: $kesco-troisieme;             // couleur tertiaire pour shop/accents
 
+  // ---------------------------------------------------------------------------
+  // Overrides variables foundation-sites (boutons, composants)
+  // ---------------------------------------------------------------------------
+  // Foundation utilise $primary-color et dérivées — remappées à palette Kescomminges
+
+  $primary-color:         $kesco-principal-500;   // couleur principale brand
+  $secondary-color:       $kesco-secondaire-500;  // secondaire
+  $success-color:         $kesco-troisieme;       // succès/mise en évidence (vert)
+  $alert-color:           #e74c3c;                // (inchangé — alerte/erreur)
+  $warning-color:         $kesco-secondaire-400;  // warning
+  $info-color:            $kesco-principal-300;   // info
+
   // Variables OFN remappées
   $ofn-brand:       $kesco-secondaire-500;
   $brand-colour:    $kesco-principal-500;
