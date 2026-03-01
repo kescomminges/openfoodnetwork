@@ -322,6 +322,11 @@ scss = <<~SCSS
   $clr-blue-light:  $kesco-principal-300;
   $clr-blue-bright: $kesco-principal-400;
 
+  $orange-400: $kesco-secondaire-400;
+  $orange-450: $kesco-secondaire-450;
+  $orange-500: $kesco-secondaire-500;
+  $orange-600: $kesco-secondaire-600;
+
   $ofn-brand:       $kesco-secondaire-500;
   $brand-colour:    $kesco-principal-500;
   $accent-color:    $kesco-troisieme;
