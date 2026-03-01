@@ -209,10 +209,17 @@ checkout_order_summary_bg = Color.lighten(principal, 48)  # fond résumé comman
 checkout_dirty_bg         = Color.lighten(troisieme, 32)  # fieldset erreur (teinte troisième)
 checkout_valid_bg         = Color.lighten(principal, 40)  # fieldset valide (teinte principal)
 
-# Dérivées troisième (remplace $clr-turquoise-* OFN)
-lighten_troisieme       = Color.lighten(troisieme, 25)   # $clr-turquoise-light
-ultralighten_troisieme  = Color.lighten(troisieme, 40)   # $clr-turquoise-ultra-light
-brighten_troisieme      = Color.lighten(troisieme, 8)    # $clr-turquoise-bright
+# Dérivées troisième
+troisieme_300 = Color.lighten(troisieme, 40)   # fond très clair
+troisieme_400 = Color.lighten(troisieme, 25)   # fond clair
+troisieme_500 = troisieme
+troisieme_600 = Color.darken(troisieme, 8)     # hover/actif
+troisieme_bright = Color.lighten(troisieme, 8) # légèrement plus clair
+
+# Aliases pour overrides $clr-turquoise-* OFN
+lighten_troisieme       = troisieme_400
+ultralighten_troisieme  = troisieme_300
+brighten_troisieme      = troisieme_bright
 
 # =============================================================================
 # Génération du fichier SCSS
@@ -277,6 +284,19 @@ scss = <<~SCSS
   $kesco-secondaire-450: #{secondaire_450};  // secondaire
   $kesco-secondaire-500: #{secondaire_500};  // secondaire
   $kesco-secondaire-600: #{secondaire_600};  // darken(secondaire, 10%)
+
+  // ---------------------------------------------------------------------------
+  // Dérivées palette troisième (remplace lighten/darken Sass)
+  // ---------------------------------------------------------------------------
+
+  $kesco-troisieme-300: #{troisieme_300};   // lighten(troisieme, 40%) — fond très clair
+  $kesco-troisieme-400: #{troisieme_400};   // lighten(troisieme, 25%) — fond clair
+  $kesco-troisieme-500: #{troisieme_500};   // troisieme
+  $kesco-troisieme-600: #{troisieme_600};   // darken(troisieme, 8%) — foncé
+
+  $kesco-troisieme-light:       #{troisieme_400};   // alias fond clair
+  $kesco-troisieme-ultra-light: #{troisieme_300};   // alias fond très clair
+  $kesco-troisieme-bright:      #{troisieme_bright}; // alias hover (lighten 8%)
 
   // ---------------------------------------------------------------------------
   // Dérivées palette admin (remplace lighten/darken Sass dans palette.scss)
