@@ -4,11 +4,11 @@
 @import 'variables';
 @import '../shared/variables/layout';
 @import '../shared/utilities';
+@import 'branding';           // variables OFN par défaut
+@import 'kescomminges_vars';  // override palette Kescomminges (avant Foundation pour $primary-color)
 @import 'foundation-sites/scss/foundation';
 
 @import 'big-input';
-@import 'branding';
-@import 'kescomminges_vars';
 @import 'typography';
 @import 'mixins';
 @import '../shared/trix';
