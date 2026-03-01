@@ -56,7 +56,7 @@ set -- "${FILTERED_ARGS[@]+"${FILTERED_ARGS[@]}"}"
 # =============================================================================
 
 if [ "$DEPLOY_ENV" = "dev" ]; then
-  APP_DIR="/home/kescomminges/ofn/openfoodnetwork-dev"
+  APP_DIR="/home/clia/floppy/claude/openfoodnetwork"
 else
   APP_DIR="/home/kescomminges/ofn/openfoodnetwork"
 fi
