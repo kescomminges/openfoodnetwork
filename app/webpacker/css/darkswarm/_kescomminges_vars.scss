@@ -2,7 +2,7 @@
 // _kescomminges_vars.scss — Variables SCSS Kescomminges
 //
 // FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER MANUELLEMENT
-// Généré le : 2026-02-28 16:41
+// Généré le : 2026-03-01 11:59
 // Source    : KESCOMMINGES/variables.yml
 // Script    : bin/generate_scss_vars
 //
@@ -17,13 +17,13 @@
 // Couleurs sources Kescomminges (depuis variables.yml)
 // ---------------------------------------------------------------------------
 
-$kesco-principal:  #1a5566;   // bleu canard — header, navigation
-$kesco-secondaire: #b6244f;  // bordeaux — CTA, boutons principaux
-$kesco-troisieme:  #c4723a;   // orange terracotta — couleur tertiaire
-$kesco-gris-fonce: #1a1a1a;  // texte courant, libellés
+$kesco-principal:  #e82546;   // bleu canard — header, navigation
+$kesco-secondaire: #ec8123;  // bordeaux — CTA, boutons principaux
+$kesco-troisieme:  #419d78;   // orange terracotta — couleur tertiaire
+$kesco-gris-fonce: #272727;  // texte courant, libellés
 $kesco-gris-clair: #f2f2f2;  // fonds, surfaces neutres
 
-// Alias rétrocompatibilité (pour les SCSS qui utilisent encore $kesco-accent)
+// Alias rétrocompatibilité (obsolète)
 $kesco-accent: $kesco-troisieme;
 
 // ---------------------------------------------------------------------------
@@ -34,65 +34,78 @@ $kesco-font-titre: 'Lora', Georgia, serif;
 $kesco-font-corps: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif;
 
 // ---------------------------------------------------------------------------
-// Dérivées bleu canard — gamme teal (remplace lighten/darken Sass)
+// Dérivées palette principale (remplace lighten/darken Sass)
 // ---------------------------------------------------------------------------
 
-$kesco-teal-300: #34aacb;   // lighten(principal, 25%)
-$kesco-teal-400: #2a88a3;   // lighten(principal, 15%)
-$kesco-teal-500: #1a5566;   // principal
-$kesco-teal-600: #123a45;   // darken(principal, 8%)
+$kesco-principal-300: #f498a8;   // lighten(principal, 25%)
+$kesco-principal-400: #ef6a81;   // lighten(principal, 15%)
+$kesco-principal-500: #e82546;   // principal
+$kesco-principal-600: #ce1635;   // darken(principal, 8%)
 
-$kesco-clr-blue:        #1a5566;        // = principal
-$kesco-clr-blue-light:  #49b2d0;  // lighten(principal, 30%)
-$kesco-clr-blue-bright: #2a88a3; // lighten(principal, 15%)
+$kesco-principal-fonce:  #ce1635;    // darken(principal, 8%)
+$kesco-principal-clair:  #f7afbb;    // lighten(principal, 30%)
+$kesco-principal-eclaire: #ef6a81; // lighten(principal, 15%)
 
 // ---------------------------------------------------------------------------
-// Dérivées bordeaux — gamme secondaire (remplace lighten/darken Sass)
+// Dérivées palette secondaire (remplace lighten/darken Sass)
 // ---------------------------------------------------------------------------
 
-$kesco-orange-400: #d93e6c;  // lighten(secondaire, 12%)
-$kesco-orange-450: #b6244f;  // secondaire
-$kesco-orange-500: #b6244f;  // secondaire
-$kesco-orange-600: #8b1c3d;  // darken(secondaire, 10%)
+$kesco-secondaire-400: #f1a15b;  // lighten(secondaire, 12%)
+$kesco-secondaire-450: #ec8123;  // secondaire
+$kesco-secondaire-500: #ec8123;  // secondaire
+$kesco-secondaire-600: #cb6811;  // darken(secondaire, 10%)
 
 // ---------------------------------------------------------------------------
 // Dérivées palette admin (remplace lighten/darken Sass dans palette.scss)
 // ---------------------------------------------------------------------------
 
-$kesco-admin-orient:          #123a45;          // darken(principal, 8%)
-$kesco-admin-dark-blue:       #091f25;       // darken(principal, 16%)
-$kesco-admin-pale-blue:       #85cce0;       // lighten(principal, 45%)
-$kesco-admin-mystic:          #9ad4e5;          // lighten(fond, 15%)
-$kesco-admin-roof-terracotta: #831a39; // darken(secondaire, 12%)
-$kesco-admin-yellow:          #ce8859;          // lighten(troisieme, 8%)
-$kesco-admin-fair-pink:       #efadc0;       // lighten(secondaire, 38%)
-$kesco-admin-spree-light-blue: #9ad4e5; // lighten(principal, 50%)
-$kesco-admin-tags-bg:         #49b2d0;         // lighten(principal, 30%)
-$kesco-admin-panel-border:    #1a5566;    // = principal
-$kesco-admin-panel-hover:     #92d1e3;     // lighten(principal, 48%)
-$kesco-admin-panel-text:      #051115;      // darken(principal, 20%)
+$kesco-admin-orient:          #ce1635;          // darken(principal, 8%)
+$kesco-admin-dark-blue:       #aa122c;       // darken(principal, 16%)
+$kesco-admin-pale-blue:       #fef5f6;       // lighten(principal, 45%)
+$kesco-admin-mystic:          #ffffff;          // lighten(fond, 15%)
+$kesco-admin-roof-terracotta: #c16311; // darken(secondaire, 12%)
+$kesco-admin-yellow:          #50b78d;          // lighten(troisieme, 8%)
+$kesco-admin-fair-pink:       #fbe7d5;       // lighten(secondaire, 38%)
+$kesco-admin-spree-light-blue: #ffffff; // lighten(principal, 50%)
+$kesco-admin-tags-bg:         #f7afbb;         // lighten(principal, 30%)
+$kesco-admin-panel-border:    #e82546;    // = principal
+$kesco-admin-panel-hover:     #ffffff;     // lighten(principal, 48%)
+$kesco-admin-panel-text:      #971027;      // darken(principal, 20%)
 
 // ---------------------------------------------------------------------------
 // Dérivées email
 // ---------------------------------------------------------------------------
 
-$kesco-email-callout-bg: #a2d8e7; // lighten(principal, 52%)
+$kesco-email-callout-bg: #ffffff; // lighten(principal, 52%)
 
 // ---------------------------------------------------------------------------
 // Dérivées checkout
 // ---------------------------------------------------------------------------
 
-$kesco-checkout-order-summary-bg: #92d1e3; // lighten(principal, 48%)
-$kesco-checkout-dirty-bg:         #eaccb7;          // lighten(accent, 32%) — fieldset erreur
-$kesco-checkout-valid-bg:         #71c3db;          // lighten(principal, 40%) — fieldset valide
+$kesco-checkout-order-summary-bg: #ffffff; // lighten(principal, 48%)
+$kesco-checkout-dirty-bg:         #a7dac6;          // lighten(accent, 32%) — fieldset erreur
+$kesco-checkout-valid-bg:         #fbdee3;          // lighten(principal, 40%) — fieldset valide
 
 // ---------------------------------------------------------------------------
-// Redéfinitions des variables OFN standard (pour appliquer les couleurs)
+// Overrides variables OFN standard (appliquer palette Kescomminges)
 // ---------------------------------------------------------------------------
-// Ces variables override les valeurs OFN par défaut
+// Ces variables override les valeurs OFN par défaut (de branding.scss)
+// pour que les composants OFN utilisent la palette Kescomminges sans
+// modifier les fichiers upstream.
+//
+// Placées APRÈS branding.scss dans all.scss, elles prennent la priorité.
 
-$ofn-brand: #b6244f;           // CTA, boutons principaux
-$brand-colour: #1a5566;         // Topbar, headers
-$accent-color: #c4723a;         // Accents tertiaires
-$alert-color: #e74c3c;               // (inchangé — alerte/erreur)
-$success-color: #27ae60;              // (inchangé — succès)
+$teal-300: $kesco-principal-300;
+$teal-400: $kesco-principal-400;
+$teal-500: $kesco-principal-500;
+$teal-600: $kesco-principal-600;
+
+$clr-blue:        $kesco-principal-500;
+$clr-blue-light:  $kesco-principal-300;
+$clr-blue-bright: $kesco-principal-400;
+
+$ofn-brand:       $kesco-secondaire-500;
+$brand-colour:    $kesco-principal-500;
+$accent-color:    $kesco-troisieme;
+$alert-color:     #e74c3c;                // (inchangé — alerte/erreur)
+$success-color:   #27ae60;                // (inchangé — succès)

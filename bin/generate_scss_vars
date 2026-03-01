@@ -170,25 +170,25 @@ font_corps = typo["font_corps"] || "Lato, Arial, sans-serif"
 # Calcul des dérivées (remplace lighten()/darken() dans les SCSS)
 # =============================================================================
 
-# Gamme bleu canard — teal (depuis principal)
-teal_300 = Color.lighten(principal, 25)
-teal_400 = Color.lighten(principal, 15)
-teal_500 = principal
-teal_600 = Color.darken(principal, 8)
+# Gamme principale — dérivées principal (depuis principal)
+principal_300 = Color.lighten(principal, 25)
+principal_400 = Color.lighten(principal, 15)
+principal_500 = principal
+principal_600 = Color.darken(principal, 8)
 
-# Gamme bordeaux — depuis secondaire (CTA, boutons)
-orange_400 = Color.lighten(secondaire, 12)
-orange_450 = secondaire
-orange_500 = secondaire
-orange_600 = Color.darken(secondaire, 10)
+# Gamme secondaire — dérivées secondaire (CTA, boutons)
+secondaire_400 = Color.lighten(secondaire, 12)
+secondaire_450 = secondaire
+secondaire_500 = secondaire
+secondaire_600 = Color.darken(secondaire, 10)
 
-# Bleu (liens, bouton success)
-clr_blue        = principal
-clr_blue_light  = Color.lighten(principal, 30)
-clr_blue_bright = Color.lighten(principal, 15)
+# Dérivées sémantiques
+principal_fonce  = Color.darken(principal, 8)
+principal_clair  = Color.lighten(principal, 30)
+principal_eclaire = Color.lighten(principal, 15)
 
 # Palette admin
-admin_orient           = Color.darken(principal, 8)
+admin_orient           = principal_fonce
 admin_dark_blue        = Color.darken(principal, 16)
 admin_pale_blue        = Color.lighten(principal, 45)
 admin_mystic           = Color.lighten(principal, 50)   # fond lavande → teinte principal très claire
@@ -196,7 +196,7 @@ admin_roof_terracotta  = Color.darken(secondaire, 12)
 admin_yellow           = Color.lighten(troisieme, 8)    # warning/alerte depuis troisième
 admin_fair_pink        = Color.lighten(secondaire, 38)
 admin_spree_light_blue = Color.lighten(principal, 50)
-admin_tags_bg          = Color.lighten(principal, 30)
+admin_tags_bg          = principal_clair
 admin_panel_border     = principal
 admin_panel_hover      = Color.lighten(principal, 48)
 admin_panel_text       = Color.darken(principal, 20)
@@ -241,7 +241,7 @@ scss = <<~SCSS
   $kesco-gris-fonce: #{gris_fonce};  // texte courant, libellés
   $kesco-gris-clair: #{gris_clair};  // fonds, surfaces neutres
 
-  // Alias rétrocompatibilité (pour les SCSS qui utilisent encore $kesco-accent)
+  // Alias rétrocompatibilité (obsolète)
   $kesco-accent: $kesco-troisieme;
 
   // ---------------------------------------------------------------------------
@@ -252,26 +252,26 @@ scss = <<~SCSS
   $kesco-font-corps: #{font_corps};
 
   // ---------------------------------------------------------------------------
-  // Dérivées bleu canard — gamme teal (remplace lighten/darken Sass)
+  // Dérivées palette principale (remplace lighten/darken Sass)
   // ---------------------------------------------------------------------------
 
-  $kesco-teal-300: #{teal_300};   // lighten(principal, 25%)
-  $kesco-teal-400: #{teal_400};   // lighten(principal, 15%)
-  $kesco-teal-500: #{teal_500};   // principal
-  $kesco-teal-600: #{teal_600};   // darken(principal, 8%)
+  $kesco-principal-300: #{principal_300};   // lighten(principal, 25%)
+  $kesco-principal-400: #{principal_400};   // lighten(principal, 15%)
+  $kesco-principal-500: #{principal_500};   // principal
+  $kesco-principal-600: #{principal_600};   // darken(principal, 8%)
 
-  $kesco-clr-blue:        #{clr_blue};        // = principal
-  $kesco-clr-blue-light:  #{clr_blue_light};  // lighten(principal, 30%)
-  $kesco-clr-blue-bright: #{clr_blue_bright}; // lighten(principal, 15%)
+  $kesco-principal-fonce:  #{principal_fonce};    // darken(principal, 8%)
+  $kesco-principal-clair:  #{principal_clair};    // lighten(principal, 30%)
+  $kesco-principal-eclaire: #{principal_eclaire}; // lighten(principal, 15%)
 
   // ---------------------------------------------------------------------------
-  // Dérivées bordeaux — gamme secondaire (remplace lighten/darken Sass)
+  // Dérivées palette secondaire (remplace lighten/darken Sass)
   // ---------------------------------------------------------------------------
 
-  $kesco-orange-400: #{orange_400};  // lighten(secondaire, 12%)
-  $kesco-orange-450: #{orange_450};  // secondaire
-  $kesco-orange-500: #{orange_500};  // secondaire
-  $kesco-orange-600: #{orange_600};  // darken(secondaire, 10%)
+  $kesco-secondaire-400: #{secondaire_400};  // lighten(secondaire, 12%)
+  $kesco-secondaire-450: #{secondaire_450};  // secondaire
+  $kesco-secondaire-500: #{secondaire_500};  // secondaire
+  $kesco-secondaire-600: #{secondaire_600};  // darken(secondaire, 10%)
 
   // ---------------------------------------------------------------------------
   // Dérivées palette admin (remplace lighten/darken Sass dans palette.scss)
@@ -305,15 +305,28 @@ scss = <<~SCSS
   $kesco-checkout-valid-bg:         #{checkout_valid_bg};          // lighten(principal, 40%) — fieldset valide
 
   // ---------------------------------------------------------------------------
-  // Redéfinitions des variables OFN standard (pour appliquer les couleurs)
+  // Overrides variables OFN standard (appliquer palette Kescomminges)
   // ---------------------------------------------------------------------------
-  // Ces variables override les valeurs OFN par défaut
+  // Ces variables override les valeurs OFN par défaut (de branding.scss)
+  // pour que les composants OFN utilisent la palette Kescomminges sans
+  // modifier les fichiers upstream.
+  //
+  // Placées APRÈS branding.scss dans all.scss, elles prennent la priorité.
 
-  $ofn-brand: #{secondaire};           // CTA, boutons principaux
-  $brand-colour: #{principal};         // Topbar, headers
-  $accent-color: #{troisieme};         // Accents tertiaires
-  $alert-color: #e74c3c;               // (inchangé — alerte/erreur)
-  $success-color: #27ae60;              // (inchangé — succès)
+  $teal-300: $kesco-principal-300;
+  $teal-400: $kesco-principal-400;
+  $teal-500: $kesco-principal-500;
+  $teal-600: $kesco-principal-600;
+
+  $clr-blue:        $kesco-principal-500;
+  $clr-blue-light:  $kesco-principal-300;
+  $clr-blue-bright: $kesco-principal-400;
+
+  $ofn-brand:       $kesco-secondaire-500;
+  $brand-colour:    $kesco-principal-500;
+  $accent-color:    $kesco-troisieme;
+  $alert-color:     #e74c3c;                // (inchangé — alerte/erreur)
+  $success-color:   #27ae60;                // (inchangé — succès)
 SCSS
 
 # =============================================================================
@@ -326,5 +339,5 @@ puts "[generate_scss_vars]   principal  : #{principal}"
 puts "[generate_scss_vars]   secondaire : #{secondaire}"
 puts "[generate_scss_vars]   troisieme  : #{troisieme}"
 puts "[generate_scss_vars]   gris_fonce : #{gris_fonce} / gris_clair : #{gris_clair}"
-puts "[generate_scss_vars]   teal-300..600 : #{teal_300} #{teal_400} #{teal_500} #{teal_600}"
-puts "[generate_scss_vars]   bordeaux-400..600 : #{orange_400} #{orange_450} #{orange_600}"
+puts "[generate_scss_vars]   principal-300..600 : #{principal_300} #{principal_400} #{principal_500} #{principal_600}"
+puts "[generate_scss_vars]   secondaire-400..600 : #{secondaire_400} #{secondaire_450} #{secondaire_600}"
